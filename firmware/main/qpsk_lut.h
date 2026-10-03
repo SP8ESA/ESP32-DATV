@@ -28,16 +28,19 @@ static inline uint32_t lut_words(uint32_t sps) { return 3u * 256u * sps; }
 
 /* amp: worst-case |I| and |Q| in DAC codes. dci/dcq: DC offset in codes (fractions are fine, they average out in the rounding).
  * g, phi_deg: Q path correction Q' = g (Q cos phi + I sin phi) (image calibration). Returns false for unsupported sps. */
-static int lut_build(int32_t *T, uint32_t sps, int32_t ifm, float beta, float amp, float dci, float dcq, float g, float phi_deg) {
+/* ngroups groups of 4 symbols (span 4 * ngroups symbols); the bias +512 goes into the last group, the DC trim into group 0. */
+static int lut_build_g(int32_t *T, uint32_t sps, int32_t ifm, float beta, float amp, float dci, float dcq, float g, float phi_deg, uint32_t ngroups) {
     if (sps != 4u && sps != 8u && sps != 16u) return 0;
+    if (ngroups < 1u || ngroups > 3u) return 0;
+    const uint32_t span = 4u * ngroups;
     const float pi = 3.14159265f;
     const float cq = cosf(phi_deg * pi / 180.0f), sq = sinf(phi_deg * pi / 180.0f);
     const float kq = g * (fabsf(cq) + fabsf(sq));
     float h[LUT_SPAN][16], worst = 0.0f;
     for (uint32_t j = 0; j < sps; ++j) {
         float sum = 0.0f;
-        for (uint32_t l = 0; l < LUT_SPAN; ++l) {
-            h[l][j] = rrc_pulse((float)l + (float)j / (float)sps - (float)LUT_SPAN / 2.0f, beta);
+        for (uint32_t l = 0; l < span; ++l) {
+            h[l][j] = rrc_pulse((float)l + (float)j / (float)sps - (float)span / 2.0f, beta);
             sum += fabsf(h[l][j]);
         }
         const float ph = 2.0f * pi * (float)((ifm * (int32_t)j) % (int32_t)sps) / (float)sps;
@@ -45,7 +48,7 @@ static int lut_build(int32_t *T, uint32_t sps, int32_t ifm, float beta, float am
         if (w > worst) worst = w;
     }
     const float sc = amp / worst;
-    for (uint32_t k = 0; k < 3u; ++k)
+    for (uint32_t k = 0; k < ngroups; ++k)
         for (uint32_t idx = 0; idx < 256u; ++idx)
             for (uint32_t j = 0; j < sps; ++j) {
                 float vi = 0.0f, vq = 0.0f;
@@ -59,10 +62,14 @@ static int lut_build(int32_t *T, uint32_t sps, int32_t ifm, float beta, float am
                 const float ri = vi * c - vq * s, rq = vi * s + vq * c;
                 float oi = ri * sc, oq = g * (rq * cq + ri * sq) * sc;
                 if (k == 0u) { oi += dci; oq += dcq; }
-                if (k == 2u) { oi += 512.0f; oq += 512.0f; }
+                if (k == ngroups - 1u) { oi += 512.0f; oq += 512.0f; }
                 T[(k * 256u + idx) * sps + j] = (int32_t)lroundf(oi) + ((int32_t)lroundf(oq) << 10);
             }
     return 1;
+}
+
+static inline int lut_build(int32_t *T, uint32_t sps, int32_t ifm, float beta, float amp, float dci, float dcq, float g, float phi_deg) {
+    return lut_build_g(T, sps, ifm, beta, amp, dci, dcq, g, phi_deg, 3u);
 }
 
 #endif

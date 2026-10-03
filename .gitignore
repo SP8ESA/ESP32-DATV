@@ -3,3 +3,4 @@ firmware/sdkconfig
 firmware/sdkconfig.old
 __pycache__/
 *.pyc
+firmware/tools/lut8_pads_used.json

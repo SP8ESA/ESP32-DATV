@@ -17,6 +17,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import esp_link  # noqa: E402
+from tx_dvbs import auto_sps  # noqa: E402
 
 CPU_HZ = 160e6
 
@@ -25,7 +26,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--freq", type=float, default=2402.000, help="centre of the spectrum [MHz] (13 cm band)")
     ap.add_argument("--baud", type=int, default=1000000)
-    ap.add_argument("--sps", type=int, default=4, choices=(4, 8, 16))
+    ap.add_argument("--sps", type=int, default=0, choices=(0, 4, 8, 16), help="0 = automatic (as tx_dvbs.py: 8 at 1 MBd)")
     ap.add_argument("--ifm", type=int, default=0, help="centre = LO + ifm * baud")
     ap.add_argument("--amp", type=int, default=300)
     ap.add_argument("--stream", action="store_true", help="random symbol bytes from the PC over USB instead of the on-chip PRBS")
@@ -38,6 +39,11 @@ def main():
     a = ap.parse_args()
     if not esp_link.BAND[0] <= a.freq <= esp_link.BAND[1]:
         raise SystemExit("transmission only in the 13 cm band (2300..2450 MHz)")
+    if not a.sps:
+        a.sps = auto_sps(a.baud)
+    if a.sps * a.baud > 4_000_000 and not a.stream:
+        print("8 MS/s takes the symbols from USB: --stream switched on (random symbols from the PC)")
+        a.stream = True
     period = round(CPU_HZ / (a.baud * a.sps))
     baud_act = CPU_HZ / (period * a.sps)
     if_hz = round(a.ifm * baud_act)

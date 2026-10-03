@@ -6,11 +6,13 @@
 
 ![Spectrum of the transmitted DVB-S signal](docs/spectrum.png)
 
-*The 1 MBd DVB-S signal around 2402 MHz, seen in SDR++ on a HackRF One (the author's screenshot). The faint humps a few MHz
-to the right are the images of the 4 MS/s zero-order-hold output, roughly 20-25 dB below the signal.*
+*The 1 MBd DVB-S signal around 2402 MHz, seen in SDR++ on a HackRF One (the author's screenshot, taken with the earlier
+4 MS/s output). The faint humps a few MHz to the right are the images of that 4 MS/s zero-order-hold output. At 1 MBd the
+firmware now updates the DAC at 8 MS/s: those images are gone (19 dB lower, see [Measured](#measured)).*
 
 The ESP32-C3's Wi-Fi transmitter has an I/Q modulator and a 10-bit I/Q DAC feeding it. This project drives that DAC directly
-from the CPU at 4 mega-samples per second, so the chip itself produces a root-raised-cosine QPSK signal on 2.4 GHz. A PC
+from the CPU at 8 mega-samples per second (1 MBd; other symbol rates at up to 4 MS/s), so the chip itself produces a
+root-raised-cosine QPSK signal on 2.4 GHz. A PC
 encodes an MPEG transport stream to DVB-S (energy dispersal, Reed-Solomon, interleaver, convolutional code) and streams the
 symbols over USB; the ESP does the pulse shaping and the output. The demo film in `media/` plays on a normal DVB-S receiver.
 
@@ -20,7 +22,8 @@ symbols over USB; the ESP does the pulse shaping and the output. The demo film i
 
 | Path | What |
 |---|---|
-| `firmware/` | ESP-IDF project, transmit only (`main/main.c`, `main/qpsk_lut.h`) |
+| `firmware/` | ESP-IDF project, transmit only (`main/main.c`, `main/qpsk_lut.h`, `main/lut8.S`) |
+| `firmware/tools/gen_lut8.py` | Generates `main/lut8.S`, the hand-scheduled 8 MS/s loop, from `lut8_pads.json` (per-slot padding) |
 | `host/dvbs.py` | DVB-S encoder, TS to QPSK symbols (EN 300 421, all code rates 1/2 ... 7/8), with a self-test |
 | `host/tx_dvbs.py` | The transmitter script: transport stream source (demo film, any video, test pattern, stdin), encoder, USB streaming |
 | `host/tx_qpsk_test.py` | Random-symbol QPSK test for looking at the spectrum |
@@ -60,7 +63,8 @@ ffmpeg -re -i in.mp4 ... -f mpegts -muxrate 880000 - | python3 tx_dvbs.py --ts -
 python3 tx_qpsk_test.py --seconds 60                    # plain random QPSK, for spectrum checks
 ```
 
-Useful options: `--baud` (up to 1000000), `--fec 1/2|2/3|3/4|5/6|7/8`, `--amp` (peak DAC code, default 300, max 480; lower
+Useful options: `--baud` (2000 ... 1000000, e.g. 33000 for narrow-band DATV: picture size, frame rate and audio shrink with
+the channel), `--fec 1/2|2/3|3/4|5/6|7/8`, `--amp` (peak DAC code, default 300, max 480; lower
 it if the output is compressed), `--ifm N` (centre = LO + N x baud, moves the LO leakage out of the signal), `--ppm`.
 
 **Set `--ppm` for your board.** The PLL assumes an exact 40 MHz crystal, and real crystals are off by some ppm (about +12 ppm
@@ -73,11 +77,17 @@ on the author's board, which is 29 kHz at 2.4 GHz). The crystal also drifts seve
   `dactrig` of Espressif's RF test library). Running it as a loop of **one** word makes it a held 10-bit I/Q register that the
   CPU updates with a plain store (I in bits 9:0, Q in bits 19:10). Longer rings cannot be written live (the CPU access to the
   bank is garbled while it plays); a one-word loop works because the DMA pointer never moves.
-* **Pulse shaping with tables.** With an integer number of samples per symbol (`sps` = 4) the RRC filter output depends only
+* **Pulse shaping with tables.** With an integer number of samples per symbol the RRC filter output depends only
   on the last 12 symbols and the phase inside the symbol. Three tables of 256 rows (4 symbols of I and Q each, 8 bits of
   history) hold ready DAC words, so one sample is three loads, two adds, an xor and a store: about 14 of the 40 cycles
   available at 1 MBd. An IF that is a whole multiple of the symbol rate is baked into the tables for free, and so are the
   DC and I/Q-imbalance trims. `host/test_lut.c` checks the tables (error under 1.5 DAC codes, SNR about 50 dB).
+* **8 MS/s at 1 MBd** (`main/lut8.S`). 8 samples per symbol leave 20 CPU cycles per sample, too few for compiled code: the
+  loop is hand-scheduled RISC-V assembly in which every slot (store, next word, a share of the symbol's work, padding) takes
+  exactly 20 cycles, measured with a timing build that records every store. One cycle-counter sync per symbol (a jump into a
+  `nop` sled) absorbs what cannot be made exact: access to the USB peripheral crosses into its 48 MHz clock domain and varies
+  by a cycle. RRC span 8 symbols there (2 tables), the fill report runs in a balanced maintenance pass every 2 ms. Measured
+  instruction costs on this core: cycle counter read 1, USB register read 6, DAC store 1, RAM load ~1.25, taken branch 3.
 * **Scheduling.** Two symbols per loop pass, with the per-symbol work (decode, table row pointers, USB read, ring refill)
   spread over the slots so that no sample slot overruns its period. USB (a 64-byte FIFO, each register read costs ~12
   cycles) is touched at most once per slot.
@@ -97,18 +107,29 @@ Everything below is on one board (ESP32-C3 rev 0.4, 40 MHz crystal), with a Hack
 * The signal decoded with **leandvb**, an independent DVB-S decoder, bit for bit, in simulation for every code rate and over
   the air at 1 MBd, FEC 1/2: 6003 transport stream packets in 10 s with no residual errors, H.264 640x360 video and audio
   intact. leandvb reported MER 16-18 dB.
-* Lateness of the DAC updates: 0.03 % of sample slots at random symbols, 0.3-0.5 % while streaming from USB.
-* Spectrum: flat top, skirts about 47 dB down just outside the signal band (simulated) and a noise-like floor around 30 dB below
-  the signal level in a 150 kHz bin. Zero-order-hold images at +-4 MHz about 20-25 dB down (see the screenshot).
+* 1 MBd, 4 MS/s (C loop) against 8 MS/s (assembly loop), random symbols, same setup; level per bin relative to the level in
+  the signal band, both sides averaged, measurement floor about -47 dB:
+
+  | offset from centre | 4 MS/s | 8 MS/s |
+  |---|---|---|
+  | 1.0-1.5 MHz | -33.3 dB | -36.4 dB |
+  | 2.0-2.5 MHz | -35.2 dB | -39.4 dB |
+  | 2.5-3.0 MHz | -35.5 dB | -41.2 dB |
+  | 3.5-4.0 MHz (images of 4 MS/s) | -24.4 dB | -43.4 dB |
+  | 7.5-8.0 MHz (images of 8 MS/s) | -32.5 dB | -31.3 dB |
+
+  DVB-S decode in the same conditions: 4 MS/s 6082 packets in 10 s, MER 17.1 dB; 8 MS/s 6062 packets, MER 16.7 dB.
+* What is left near the signal is mostly the noise of the carrier itself: an unmodulated carrier shows the same skirt
+  (-75 dBc/Hz at 100 kHz, -91 dBc/Hz at 1 MHz offset, receiver included).
 
 ## Limitations
 
-* Tested: **1 MBd, `--sps 4`, FEC 1/2 on the air** (other FEC rates only in simulation); the host scripts on Linux. Other
-  `--sps` / `--baud` combinations are accepted by the firmware but not tested. `--sps 8` at 1 MBd does not fit in 20 cycles
-  per sample.
-* **The output is not a clean transmitter.** There is no filter and no amplifier: the images at +-4 MHz are the DAC
-  output rate, and the broadband noise floor (about 30 dB below the signal level in a 150 kHz bin) comes from the 10-bit DAC and
-  from timing jitter; it is not fully analysed. Add a band-pass filter and/or attenuation as your licence and
+* Tested on the air: **1 MBd at 8 MS/s and at 4 MS/s, 500 kBd at 4 MS/s, 33 kBd**, FEC 1/2 (other FEC rates bit-exact in
+  simulation); the host scripts on Linux. The 8 MS/s loop exists for exactly 1 MBd and needs the USB stream (no on-chip PRBS
+  there); other symbol rates use the C loop at up to 4 MS/s.
+* **The output is not a clean transmitter.** There is no filter and no amplifier: zero-order-hold images remain at +-8 MHz
+  (at 1 MBd; at +-4 MHz for the other rates), and the carrier's own noise forms a skirt about 35-40 dB below the signal level
+  per bin. Add a band-pass filter and/or attenuation as your licence and
   local rules require.
 * Transmit only, and only in the 13 cm band: the firmware refuses to transmit outside 2300..2450 MHz.
 * The firmware calls undocumented PHY ROM functions and writes undocumented registers of the ESP32-C3 (found by reading the

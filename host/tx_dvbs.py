@@ -50,25 +50,36 @@ class TsSource:
             return
         cap = dvbs.ts_rate(baud, fec)
         mux = int(cap * 0.965)                                      # slightly below capacity: the rest is null padding
-        vb = video_k * 1000 if video_k else int((mux - 100_000) * 0.92)
-        common = ["-c:v", "libx264", "-preset", "veryfast", "-profile:v", "main", "-g", "25", "-bf", "2",
+        # budget by channel capacity: audio, picture size / frame rate and the PSI repetition shrink for narrow channels
+        if mux >= 600_000:
+            aud, ach, ar, fps, pat, w = 96, 2, 48000, 25, 0.2, width
+        elif mux >= 200_000:
+            aud, ach, ar, fps, pat, w = 32, 1, 24000, 15, 0.5, min(width, 320)
+        else:
+            aud, ach, ar, fps, pat, w = (8 if mux < 40_000 else 16), 1, 16000, 10, 1.0, min(width, 160)
+        psi = int(3 * 188 * 8 / pat)                                 # PAT + PMT + SDT packets, bit/s
+        vb = video_k * 1000 if video_k else int((mux - aud * 1000 - psi) * 0.88)
+        if vb < 6000:
+            raise SystemExit(f"channel capacity {cap / 1000:.1f} kb/s is too small for video: use a higher symbol rate or FEC")
+        common = ["-c:v", "libx264", "-preset", "veryfast", "-profile:v", "main", "-g", str(2 * fps), "-bf", "2",
                   "-b:v", str(vb), "-maxrate", str(vb), "-bufsize", str(vb // 2), "-x264-params", "nal-hrd=cbr:force-cfr=1",
-                  "-c:a", "mp2", "-b:a", "96k", "-ac", "2", "-ar", "48000", "-pix_fmt", "yuv420p",
-                  "-f", "mpegts", "-muxrate", str(mux), "-pcr_period", "40", "-pat_period", "0.2", "-mpegts_flags", "+resend_headers",
+                  "-c:a", "mp2", "-b:a", f"{aud}k", "-ac", str(ach), "-ar", str(ar), "-pix_fmt", "yuv420p",
+                  "-f", "mpegts", "-muxrate", str(mux), "-pcr_period", "40" if aud > 50 else "100", "-pat_period", str(pat),
+                  "-mpegts_flags", "+resend_headers",
                   "-metadata", "service_provider=ESP32-DATV", "-metadata", "service_name=ESP32-C3 DATV", "-"]
         if kind == "film":
             cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-re", "-stream_loop", "-1", "-i", arg,
-                   "-vf", f"scale={width}:-2,fps=25"] + common
+                   "-vf", f"scale={w}:-2,fps={fps}"] + common
         elif kind == "test":
-            cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-re", "-f", "lavfi", "-i", "testsrc2=size=640x360:rate=25",
-                   "-f", "lavfi", "-i", "sine=frequency=800:sample_rate=48000"] + common
+            cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-re", "-f", "lavfi", "-i", f"testsrc2=size={w}x{w * 9 // 16}:rate={fps}",
+                   "-f", "lavfi", "-i", f"sine=frequency=800:sample_rate={ar}"] + common
         else:
             cmd = None
         f = None
         if cmd:
             self.proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stdin=subprocess.DEVNULL, start_new_session=True)
             f = self.proc.stdout
-            print(f"ffmpeg: video {vb // 1000} kb/s + audio 96 kb/s in a {mux // 1000} kb/s multiplex (channel capacity {cap / 1000:.0f} kb/s)")
+            print(f"ffmpeg: {w}x video {vb / 1000:.0f} kb/s at {fps} fps + audio {aud} kb/s in a {mux / 1000:.0f} kb/s multiplex (channel capacity {cap / 1000:.0f} kb/s)")
         elif arg == "-":
             f = sys.stdin.buffer
         threading.Thread(target=self._read, args=(f,), daemon=True).start()
@@ -117,6 +128,13 @@ class TsSource:
             self.proc.terminate()
 
 
+def auto_sps(baud):
+    """8 MS/s needs the hand-scheduled firmware loop, which exists for exactly 1 MBd; other rates run at up to 4 MS/s."""
+    if baud == 1_000_000:
+        return 8
+    return 16 if baud * 16 <= 4_000_000 else 8 if baud * 8 <= 4_000_000 else 4
+
+
 def load_cal(path):
     """DC and I/Q imbalance trim (measured on the author's board; see README for how to calibrate yours)."""
     if not path or not os.path.exists(path):
@@ -129,9 +147,9 @@ def load_cal(path):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--freq", type=float, default=2402.000, help="centre of the spectrum [MHz] (13 cm band)")
-    ap.add_argument("--baud", type=int, default=1000000, help="symbol rate [Bd]; 1000000 is the maximum at --sps 4")
+    ap.add_argument("--baud", type=int, default=1000000, help="symbol rate [Bd], 2000..1000000 (e.g. 33000 for narrow-band DATV)")
     ap.add_argument("--fec", default="1/2", choices=list(dvbs.PUNCT))
-    ap.add_argument("--sps", type=int, default=4, choices=(4, 8, 16), help="DAC samples per symbol: 4 = 4 MS/s at 1 MBd; 8 and 16 only for lower symbol rates")
+    ap.add_argument("--sps", type=int, default=0, choices=(0, 4, 8, 16), help="DAC samples per symbol; 0 = automatic: 8 (8 MS/s, hand-scheduled loop) at exactly 1 MBd, otherwise the most that keeps the output at or below 4 MS/s")
     ap.add_argument("--ifm", type=int, default=0, help="centre = LO + ifm * baud (puts the LO leakage outside the signal)")
     ap.add_argument("--amp", type=int, default=300, help="peak amplitude in DAC codes (1..480)")
     ap.add_argument("--target", type=int, default=3000, help="ESP symbol buffer fill to hold [pairs of 8 symbols]")
@@ -152,6 +170,8 @@ def main():
     a = ap.parse_args()
     if not esp_link.BAND[0] <= a.freq <= esp_link.BAND[1]:
         raise SystemExit("transmission only in the 13 cm band (2300..2450 MHz)")
+    if not a.sps:
+        a.sps = auto_sps(a.baud)
     period = round(CPU_HZ / (a.baud * a.sps))
     baud_act = CPU_HZ / (period * a.sps)
     if_hz = round(a.ifm * baud_act)
