@@ -130,11 +130,7 @@ runs it at very low power. The software comes as is, without any warranty (see t
 * **ETSI EN 300 421**: the DVB-S standard.
 * **FFmpeg** and **x264**: encoding of the demo and test streams. **NumPy**, **pySerial** and (for the optional RS cross-check)
   **reedsolo** on the PC side.
-* **HackRF One** (Great Scott Gadgets) and **SDR++** (Alexandre Rouma): the receiving side of the author's bench, and the
-  spectrum screenshot above.
 * **Sintel** trailer (c) Blender Foundation, https://durian.blender.org, CC BY 3.0 (see `media/README.md`).
-* The author's earlier project [ESP8266_2.4GHz_SSB_TRX](https://github.com/SP8ESA/ESP8266_2.4GHz_SSB_TRX), where the I/Q
-  modulator of a Wi-Fi chip was first used for amateur radio.
 
 ## License
 
