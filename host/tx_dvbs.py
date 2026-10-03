@@ -11,6 +11,7 @@ Transport stream sources (default: the demo film in ../media, looped, encoded on
   --ts -            transport stream on stdin, e.g.
                       ffmpeg -re -i film.mp4 ... -f mpegts -muxrate 880000 - | python3 tx_dvbs.py --ts -
   --null            only null packets: a valid but empty multiplex (a good receiver lock test)
+  --cw              no DVB-S at all: a constant symbol, i.e. an unmodulated carrier on the centre frequency (for tuning and level checks)
 When the source cannot keep up the script pads with null packets, so symbols never stop.
 
   python3 tx_dvbs.py --freq 2402.000 --baud 1000000 --fec 1/2
@@ -129,9 +130,20 @@ class TsSource:
 
 
 def auto_sps(baud):
-    """8 MS/s needs the hand-scheduled firmware loop, which exists for exactly 1 MBd; other rates run at up to 4 MS/s."""
+    """Samples per symbol. The firmware has hand-scheduled loops that update the DAC every 20 CPU cycles (8 MS/s) or 24 cycles
+    (6.67 MS/s): sps = 8 at exactly 1 MBd, and for 16..232 samples per symbol the one of the two periods that gets the symbol rate
+    closest (within 1 %); other rates use the C loops at up to 4 MS/s. The firmware derives the period from baud * sps the same way."""
     if baud == 1_000_000:
         return 8
+    best = None
+    for period in (20, 24):
+        sps = round(CPU_HZ / (period * baud))
+        if 16 <= sps <= 232:
+            err = abs(CPU_HZ / (period * sps) / baud - 1)
+            if err <= 0.01 and (best is None or err < best[0] - 1e-9):
+                best = (err, sps)
+    if best:
+        return best[1]
     return 16 if baud * 16 <= 4_000_000 else 8 if baud * 8 <= 4_000_000 else 4
 
 
@@ -149,7 +161,7 @@ def main():
     ap.add_argument("--freq", type=float, default=2402.000, help="centre of the spectrum [MHz] (13 cm band)")
     ap.add_argument("--baud", type=int, default=1000000, help="symbol rate [Bd], 2000..1000000 (e.g. 33000 for narrow-band DATV)")
     ap.add_argument("--fec", default="1/2", choices=list(dvbs.PUNCT))
-    ap.add_argument("--sps", type=int, default=0, choices=(0, 4, 8, 16), help="DAC samples per symbol; 0 = automatic: 8 (8 MS/s, hand-scheduled loop) at exactly 1 MBd, otherwise the most that keeps the output at or below 4 MS/s")
+    ap.add_argument("--sps", type=int, default=0, help="DAC samples per symbol (4, 8, 16, or 16..232 when baud * sps is 8 or 6.67 MHz); 0 = automatic: the hand-scheduled 8 / 6.67 MS/s loops when they fit the symbol rate, else the most that keeps the output at or below 4 MS/s")
     ap.add_argument("--ifm", type=int, default=0, help="centre = LO + ifm * baud (puts the LO leakage outside the signal)")
     ap.add_argument("--amp", type=int, default=300, help="peak amplitude in DAC codes (1..480)")
     ap.add_argument("--target", type=int, default=3000, help="ESP symbol buffer fill to hold [pairs of 8 symbols]")
@@ -160,6 +172,7 @@ def main():
     g.add_argument("--test", action="store_true", help="ffmpeg test pattern")
     g.add_argument("--ts", help="transport stream file, or - for stdin")
     g.add_argument("--null", action="store_true", help="null packets only")
+    g.add_argument("--cw", action="store_true", help="unmodulated carrier on the centre frequency (constant symbol, no DVB-S)")
     ap.add_argument("--invert", action="store_true", help="invert the spectrum (Q -> -Q)")
     ap.add_argument("--swap-iq", action="store_true", help="swap I and Q")
     ap.add_argument("--ppm", type=float, default=0.0, help="crystal error of YOUR board [ppm] (the PLL assumes exactly 40 MHz); measure it with a receiver")
@@ -174,11 +187,13 @@ def main():
         a.sps = auto_sps(a.baud)
     period = round(CPU_HZ / (a.baud * a.sps))
     baud_act = CPU_HZ / (period * a.sps)
+    if abs(baud_act / a.baud - 1) > 0.01:
+        print(f"note: {a.sps} samples per symbol give {baud_act:.1f} Bd, not {a.baud}")
     if_hz = round(a.ifm * baud_act)
     dc, iq_g, iq_p = ([0.0, 0.0], 1.0, 0.0) if a.no_cal else load_cal(a.cal)
     dc4 = [round(16 * v) for v in dc]
     gq, ph = round(iq_g * 1e4), round(iq_p * 1e3)
-    kind = "null" if a.null else "ts" if a.ts else "test" if a.test else "film"
+    kind = "null" if a.null or a.cw else "ts" if a.ts else "test" if a.test else "film"
     src = TsSource(kind, a.ts if kind == "ts" else a.film or DEMO_FILM, a.baud, a.fec, a.width, a.video_k)
     enc = dvbs.Encoder(a.fec, swap_iq=a.swap_iq, invert=a.invert)
     khz = round((a.freq * 1e6 - if_hz) / 1000 / (1 + a.ppm * 1e-6))
@@ -188,7 +203,7 @@ def main():
         info = link.start(f"QPSKT {khz / 1000:.3f} {a.baud} {a.sps} {a.amp} {secs} {a.ifm} {a.target} {dc4[0]} {dc4[1]} {gq} {ph}")
         kv = dict(zip(info.split()[2::2], info.split()[3::2]))
         lo_true = float(kv["LO"]) * (1 + a.ppm * 1e-6)
-        print(f"{info}\nspectrum centre {(lo_true + if_hz) / 1e6:.6f} MHz (requested {a.freq:.6f}), {baud_act:.1f} Bd, FEC {a.fec}, "
+        print(f"{info}\n" + ("UNMODULATED CARRIER (--cw)\n" if a.cw else "") + f"spectrum centre {(lo_true + if_hz) / 1e6:.6f} MHz (requested {a.freq:.6f}), {baud_act:.1f} Bd, FEC {a.fec}, "
               f"RRC 0.35 occupies {baud_act * 1.35 / 1e3:.0f} kHz, TS capacity {dvbs.ts_rate(baud_act, a.fec) / 1e3:.0f} kb/s")
         buf = b""
         t_start = t_rep = time.time()
@@ -201,7 +216,7 @@ def main():
             if todo >= 32:
                 nb = 2 * min(todo, 1024)
                 while len(buf) < nb:
-                    buf += enc.encode(src.take(8))
+                    buf += b"\xFF" * nb if a.cw else enc.encode(src.take(8))      # 0xFF = four symbols (+1, +1): a carrier
                 link.send(buf[:nb])                                       # raw symbol bytes, no framing
                 buf = buf[nb:]
                 link.sent_since += nb // 2
