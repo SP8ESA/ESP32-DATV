@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/meme.jpg" alt="Is this a 2.4GHz DATV transmitter? (an ESP32-C3 SuperMini)" width="620"></p>
+
 # ESP32-DATV
 
 **A DVB-S digital amateur TV transmitter in a bare ESP32-C3: 1 Msymbol/s QPSK in the 13 cm band, no RF hardware added.**
