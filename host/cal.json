@@ -1,0 +1,6 @@
+{
+  "note": "Measured on the author's board with a HackRF (carrier leakage and image nulled at the DAC output). It is board specific; it only trims a few DAC codes, so it is harmless on other boards. Use --no-cal to disable, or edit the numbers.",
+  "dc": [-1.401, 2.938],
+  "iq_gain": 0.99944,
+  "iq_phase_deg": 0.079
+}
