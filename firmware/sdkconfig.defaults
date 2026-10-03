@@ -18,3 +18,5 @@ CONFIG_BOOTLOADER_LOG_LEVEL_NONE=y
 # CONFIG_ESP_WIFI_RX_IRAM_OPT is not set
 # CONFIG_ESP_WIFI_AMPDU_TX_ENABLED is not set
 # CONFIG_ESP_WIFI_AMPDU_RX_ENABLED is not set
+# The 1 MBd 8PSK loop (lutg_p8s8.S) needs IRAM: keep the heap functions in flash (nothing allocates in an ISR here), so the heap below the RF dump bank stays big enough for the symbol ring.
+CONFIG_HEAP_PLACE_FUNCTION_INTO_FLASH=y

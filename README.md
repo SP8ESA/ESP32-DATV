@@ -2,7 +2,7 @@
 
 # ESP32-DATV
 
-**A DVB-S digital amateur TV transmitter in a bare ESP32-C3: QPSK from 1 Msymbol/s down to 33 ksymbol/s in the 13 cm band, no RF hardware added.**
+**A DVB-S and DVB-S2 digital amateur TV transmitter in a bare ESP32-C3: QPSK from 1 Msymbol/s down to 33 ksymbol/s (DVB-S2 also 8PSK, 200 to 500 ksymbol/s and 1 Msymbol/s) in the 13 cm band, no RF hardware added.**
 
 ![Spectrum of the transmitted DVB-S signal](docs/spectrum.png)
 
@@ -13,9 +13,10 @@ one is about 6 dB lower, and much lower still at the narrower symbol rates (see 
 
 The ESP32-C3's Wi-Fi transmitter has an I/Q modulator and a 10-bit I/Q DAC feeding it. This project drives that DAC directly
 from the CPU at 8 mega-samples per second (6.67 MS/s for the two lowest symbol rates), so the chip itself produces a
-root-raised-cosine QPSK signal on 2.4 GHz. A PC
-encodes an MPEG transport stream to DVB-S (energy dispersal, Reed-Solomon, interleaver, convolutional code) and streams the
-symbols over USB; the ESP does the pulse shaping and the output. The demo film in `media/` plays on a normal DVB-S receiver.
+root-raised-cosine QPSK (or, for DVB-S2, 8PSK) signal on 2.4 GHz. A PC
+encodes an MPEG transport stream to DVB-S (energy dispersal, Reed-Solomon, interleaver, convolutional code) or to DVB-S2 QPSK or 8PSK (BBFRAME,
+BCH, LDPC, physical layer framing, optional pilots) and streams the symbols over USB; the ESP does the pulse shaping and the output.
+The demo film in `media/` plays on a normal DVB-S receiver.
 
 **For licensed radio amateurs only.** See [Legal](#legal-and-safety) before you transmit anything.
 
@@ -23,11 +24,15 @@ symbols over USB; the ESP does the pulse shaping and the output. The demo film i
 
 | Path | What |
 |---|---|
-| `firmware/` | ESP-IDF project, transmit only (`main/main.c`, `main/qpsk_lut.h`, `main/lut8.S`, `main/lutg.S`) |
+| `firmware/` | ESP-IDF project, transmit only (`main/main.c`, `main/qpsk_lut.h`, `main/lut8.S`, `main/lutg.S`, `main/lutg_psk8.S`, `main/lutg_p8s8.S`) |
 | `firmware/tools/gen_lut8.py` | Generates `main/lut8.S`, the hand-scheduled 8 MS/s loop for 1 MBd, from `lut8_pads.json` (per-slot padding) |
 | `firmware/tools/gen_lutg.py` | Generates `main/lutg.S`, the hand-scheduled loop for all the other rates (any samples per symbol, 8 or 6.67 MS/s), from `lutg_pads.json` |
+| `firmware/tools/lutg_tune.py` | Tunes the padding of the generated loops with the timing build (`gen_lutg.py --rec timing`); `gen_lutg.py --psk8` generates `main/lutg_psk8.S`, the 8PSK variant, from `lutg_psk8_pads.json` |
+| `firmware/tools/gen_lutg_p8s8.py`, `lutg_tune_p8s8.py` | Generate `main/lutg_p8s8.S`, the 8PSK loop for 1 MBd (own generator: 8 samples per symbol, a pass of 8 symbols, 3 bit symbols), from `lutg_p8s8_pads.json`, and tune its padding with the timing build |
 | `host/dvbs.py` | DVB-S encoder, TS to QPSK symbols (EN 300 421, all code rates 1/2 ... 7/8), with a self-test |
-| `host/tx_dvbs.py` | The transmitter script: transport stream source (demo film, any video, test pattern, stdin) or an unmodulated carrier, encoder, USB streaming |
+| `host/dvbs2.py`, `host/dvbs2_ldpc.json` | DVB-S2 encoder, TS to QPSK and 8PSK symbols (EN 302 307: normal and short frames, all QPSK and 8PSK code rates, pilots), with a self-test; the LDPC tables of the standard |
+| `host/dvbs2_vs_gnuradio.py` | Compares the DVB-S2 encoder with GNU Radio's gr-dtv stage by stage (development only) |
+| `host/tx_dvbs.py` | The transmitter script: transport stream source (demo film, any video, test pattern, stdin) or an unmodulated carrier, DVB-S or DVB-S2 encoder, USB streaming |
 | `host/tx_qpsk_test.py` | Random-symbol QPSK test for looking at the spectrum |
 | `host/esp_link.py` | USB link to the firmware |
 | `host/test_lut.c` | Checks the firmware's lookup tables against a direct floating-point RRC filter, on the PC |
@@ -93,6 +98,56 @@ symbol, normally chosen for you), `--cw` (carrier only), `--ppm`.
 on the author's board, which is 29 kHz at 2.4 GHz). The crystal also drifts several ppm while the chip warms up (about
 250 Hz/s over the first minutes, 10 ppm in total on the author's board), so use a receiver with AFC; normal DATV receivers have it.
 
+### DVB-S2
+
+```sh
+python3 tx_dvbs.py --freq 2402.000 --baud 500000 --dvbs2 --fec 2/3                       # DVB-S2, QPSK 2/3, normal frames
+python3 tx_dvbs.py --freq 2402.000 --baud 125000 --dvbs2 --fec 3/4 --frame short --pilots
+python3 tx_dvbs.py --freq 2402.000 --baud 400000 --dvbs2 --mod 8psk --fec 2/3             # DVB-S2, 8PSK 2/3
+python3 tx_dvbs.py --freq 2402.000 --baud 1000000 --dvbs2 --mod 8psk --fec 3/5            # DVB-S2, 8PSK at 1 MBd
+```
+
+DVB-S2: the receiver needs the same symbol rate, the modulation (QPSK or 8PSK), the code rate, roll-off 0.35 (it is signalled in the stream), and the
+frame size and pilots are detected from the physical layer header. Normal frames are 64800 bits, short frames 16200 bits (shorter
+latency at narrow symbol rates: a normal frame is 1 s long at 33 kBd, a short one 0.25 s); pilots are 36 symbols after every 16
+slots, they cost 2.2-2.4 % of the rate and help a receiver to track the carrier. Useful transport stream rate at 1 MBd, no pilots (it scales with
+the symbol rate; pilots lower it by 2.2-2.4 %):
+
+| code rate | normal frame | short frame |
+|---|---|---|
+| 1/4 | 490 kb/s | 365 kb/s |
+| 1/3 | 656 kb/s | 629 kb/s |
+| 2/5 | 789 kb/s | 761 kb/s |
+| 1/2 | 989 kb/s | 849 kb/s |
+| 3/5 | 1188 kb/s | 1157 kb/s |
+| 2/3 | 1322 kb/s | 1288 kb/s |
+| 3/4 | 1487 kb/s | 1420 kb/s |
+| 4/5 | 1587 kb/s | 1508 kb/s |
+| 5/6 | 1655 kb/s | 1596 kb/s |
+| 8/9 | 1766 kb/s | 1728 kb/s |
+| 9/10 | 1789 kb/s | - |
+
+**8PSK** (`--mod 8psk`): code rates 3/5, 2/3, 3/4, 5/6, 8/9 and 9/10 (short frames: no 9/10), symbol rates 200 to 500 kBd (8 MS/s with 16 to 40
+samples per symbol; `--baud 500000`, `400000`, `333333`, `250000`, `200000` are the usual ones) and 1 MBd (8 samples per symbol, its own loop).
+Useful transport stream rate at 400 kBd, no pilots (multiply by 2.5 for 1 MBd: 3/5 1780 kb/s, 2/3 1981, 3/4 2228, 5/6 2479, 8/9 2646, 9/10 2679 kb/s in normal frames):
+
+| code rate | normal frame | short frame |
+|---|---|---|
+| 3/5 | 712 kb/s | 690 kb/s |
+| 2/3 | 792 kb/s | 769 kb/s |
+| 3/4 | 891 kb/s | 848 kb/s |
+| 5/6 | 991 kb/s | 952 kb/s |
+| 8/9 | 1058 kb/s | 1031 kb/s |
+| 9/10 | 1072 kb/s | - |
+
+The PC sends 8PSK as two symbols per byte (one nibble each), i.e. 250 kB/s at 500 kBd, and the USB link to the ESP carries about
+260 kB/s. At 500 kBd the ESP's buffer therefore hardly fills and runs dry now and then (short drop-outs at the receiver; `tx_dvbs.py` warns above
+400 kBd); at 400 kBd and below the buffer stays at its target. At 1 MBd the symbols travel as a bit stream, 3 bits each (375 kB/s; the nibbles would
+need 500 kB/s), and the link has to be kept busy: the Linux USB serial driver takes about one write at a time, so a loop that encodes and writes
+alternately delivered 360 kB/s and the ESP ran dry 6 % of the time; `tx_dvbs.py` encodes in its own thread, ahead of the writes, and the link then
+carries 420-430 kB/s (the ring stays at its target of 6000 pairs). 16APSK and 32APSK are not possible (the loop looks up two symbols at a time and
+those constellations have too many points). The picture size, frame rate and audio of the demo stream follow the channel capacity as in DVB-S.
+
 ## How it works
 
 * **The DAC.** The RF block has a replay engine that plays RAM at 0x3FCB0000 into the I/Q DAC at 40 MS/s (the
@@ -123,14 +178,43 @@ on the author's board, which is 29 kHz at 2.4 GHz). The crystal also drifts seve
   USB FIFO). The timing was tuned with a recording build that stamps the cycle counter after every DAC store (the stores are spaced
   exactly 20 or 24 cycles apart, apart from a cycle where a slot touches the USB registers), and the DAC words it produces were compared
   with the reference model on the PC (`host/test_lutg_words.c`). Tables take 256 x S bytes (52 KB at 33 kBd).
+* **8PSK** (`main/lutg_psk8.S`, `gen_lutg.py --psk8`, `PSK8T` command). The same loop structure at 8 MS/s with 16 to 40 samples per symbol,
+  but the four tables of two symbols now have 64 rows each (3 + 3 bits of history, index x 4 bytes, the next sample of a row 256 bytes further),
+  so the tables take 1024 x S bytes (40 KB at 200 kBd). A symbol is the angle index 0..7 (point k = e^(j pi k / 4)), two to a ring byte, low nibble
+  first. The loop was developed as in `lutg.S`: a timing build and a recording build (`host/lutg_record.py`, `gen_lutg.py --rec timing|words`),
+  `firmware/tools/lutg_tune.py` to tune the padding. The DAC words it produces match the reference model on the PC for 16, 24, 32 and 40 samples
+  per symbol (0 mismatches). Timing: the three maintenance copies are exact (every store 20 cycles after the previous one), the normal copy
+  has two pairs of slots (7/8 and 11/12) that run 21 and 19 cycles: one USB register access in them lands on a 48 MHz clock edge so that no
+  amount of padding gives exactly 20; the pair adds up to 40, so the stream is on the grid again after it, and the symbol rate is exact as before.
+* **8PSK at 1 MBd** (`main/lutg_p8s8.S`, `tools/gen_lutg_p8s8.py`, `PSK8T ... 1000000 8`). The generic loop needs 16 or more slots per symbol for
+  its per-symbol work, so 1 MBd has its own loop with no inner loop at all: a pass is 8 symbols = 64 slots of 20 cycles, fully unrolled, with a
+  sync (measure, jump into a nop sled) every two symbols. The four 2-symbol tables are 8 KB; their row pointers are biased by 1024 bytes so that the
+  eight samples of a symbol are reached with immediates from -1024 to +768. The symbols arrive as a bit stream (symbol i in bits 3i .. 3i+2, low
+  bits first, 8 symbols = 3 bytes), taken from a bit window in a register into which the next record is merged byte by byte, so a symbol costs four
+  instructions. The USB FIFO is read once per symbol. There are two code copies, N and M (maintenance: silence check, fill report, underruns, flush,
+  one pass in 257), 5 KB each; the IRAM is short, so the padding nops are 2 byte `c.nop`s, and `CONFIG_HEAP_PLACE_FUNCTION_INTO_FLASH` keeps the heap below
+  the RF dump bank big enough for the 16 KB symbol ring (without it the 33 kBd mode ran out of memory). Timing was tuned with the recording build
+  (`tools/lutg_tune_p8s8.py`, a fixed start phase of the loop against the 48 MHz USB clock): every store is 20 cycles after the previous one, a few
+  USB slots 19 (never 21), the sync never late, and the DAC words match the reference model on the PC (`host/test_lutg_words.c -p8s8`, 0 mismatches,
+  all slots of both copies).
 * **Scheduling (C loops).** Two symbols per loop pass, with the per-symbol work (decode, table row pointers, USB read, ring refill)
   spread over the slots so that no sample slot overruns its period. USB (a 64-byte FIFO, each register read costs ~12
   cycles from compiled code) is touched at most once per slot.
 * **USB protocol.** Text command `QPSKT f_MHz baud sps [amp [seconds [ifm [target [dcI dcQ [g phi]]]]]]`, then a **raw
   symbol stream**, 4 symbols per byte (bit 0 = I level, bit 1 = Q level, 1 = +1, first symbol in the low bits), no framing.
-  `target` = 0 makes the ESP generate random symbols itself. The ESP returns 4-byte fill reports (`B7`, fill lo/hi, underruns)
+  `PSK8T` takes the same arguments but 2 symbols per byte (low nibble first, value 0..7 = angle index); at 1 MBd (8 samples per symbol) 3 bits per
+  symbol, a bit stream (8 symbols = 3 bytes).
+  `target` = 0 makes the ESP generate random symbols itself (not in the 8 / 6.67 MS/s loops). The ESP returns 4-byte fill reports (`B7`, fill lo/hi, underruns)
   every 256 pairs; the PC keeps the ring about 3000 pairs (about 24 ms) full. A silent host for 0.5 s switches the
   transmitter off.
+* **DVB-S2 on the PC** (`host/dvbs2.py`): the transport stream becomes user packets with the CRC-8 of the previous packet in the place
+  of the sync byte, cut into BBFRAMEs (10 byte header with SYNCD), BB scrambler, BCH (the generator polynomial is built from the
+  minimal polynomials of the field, t = 12, 10 or 8), LDPC (irregular repeat-accumulate, the parity address tables of the standard in
+  `dvbs2_ldpc.json`), QPSK mapping, the PLHEADER (start of frame word + PLSCODE through the (64,7) code, pi/2 BPSK), pilots and the
+  physical layer scrambler (Gold code 0). For QPSK every symbol is one of four points, so the stream is the same two bits per
+  symbol as for DVB-S and the ESP firmware did not change; for 8PSK (bit interleaver with 3 columns, the constellation of the standard) the symbol
+  stream is packed as angle indices and needs `PSK8T` and `lutg_psk8.S`. A frame is not a whole number of bytes, so the encoder carries up to three
+  symbols over to the next frame.
 * **DVB-S on the PC** (`host/dvbs.py`): scrambler (1+x^14+x^15, restarted every 8 packets), RS(204,188), Forney interleaver
   (I=12), K=7 convolutional code (171, 133 octal) with puncturing, QPSK Gray mapping. Null packets pad the stream whenever
   the source is slower than the channel.
@@ -155,6 +239,21 @@ Everything below is on one board (ESP32-C3 rev 0.4, 40 MHz crystal), with a Hack
   | 7.5-8.0 MHz (images of 8 MS/s) | -32.5 dB | -31.3 dB |
 
   DVB-S decode in the same conditions: 4 MS/s 6082 packets in 10 s, MER 17.1 dB; 8 MS/s 6062 packets, MER 16.7 dB.
+* **DVB-S2** verified three ways. (1) Against GNU Radio's gr-dtv transmitter: BBFRAME, BB scrambler, BCH, LDPC, QPSK mapping and the
+  whole PLFRAME match bit for bit in all 42 modes (normal and short frames, every code rate, pilots on and off). (2) Through an
+  independent receiver, SatDump (PL synchronisation, LDPC, BCH, descrambler), on simulated baseband of the same 42 modes: the BBFRAMEs
+  it returns are identical to the transmitted ones (all but the first, which is lost while it synchronises). (3) Over the air, ESP
+  to HackRF to SatDump, with a transport stream of numbered packets of known content: 1 MBd 1/2 and 8/9 (pilots), 500 kBd 1/2, 2/3
+  (pilots) and 9/10 (pilots), 250 kBd 1/4 and short 5/6, 125 kBd short 3/4, 66 kBd 1/2 and 33 kBd normal 1/2 and short 1/2 (pilots):
+  every packet that came out of a valid frame was exact (about twenty thousand packets, none wrong), and an H.264 video decoded. A
+  receiver needs a moment to lock: in the 500 kBd 2/3 recording the first 12 frames were partly lost, the next 53 were all good.
+* **DVB-S2 8PSK.** (1) Against gr-dtv: BBFRAME, scrambler, BCH, LDPC, bit interleaver, 8PSK mapping and the whole PLFRAME (header, pilots,
+  scrambler) match bit for bit in the 8PSK modes tried (normal and short frames, 3/5, 2/3, 5/6, 8/9 and 9/10, pilots on and off). (2) SatDump on simulated
+  baseband (RRC 0.35, 24 dB Es/N0, 4 samples per symbol) of normal frames at every 8PSK code rate and of short frames at 3/5, 2/3 and 8/9: every transport
+  stream packet it returned was exact (1700 to 2800 packets per normal frame run). (3) The loop on the chip: the DAC words recorded from the
+  firmware agree with the reference model, and the tables with a floating-point RRC filter (SNR 47.6 dB, 47.8 dB at 8 samples per symbol, `host/test_lut.c -p`).
+  (4) Over the air, through a cable and an attenuator into SDRangel's DVB-S2 demodulator: the author decoded 8PSK at 400 kBd and at 1 MBd, FEC 3/5, normal
+  frames; at 1 MBd 3/5 only with SDRangel's soft LDPC option switched on (the hard-decision decoder did not lock). Not measured here: the MER of the signal.
 * All symbol rates, tinySA Ultra+ with the transmitter connected through an attenuator, 30 passes averaged in power, 2370 MHz.
   The strongest image of the zero-order-hold DAC output sits at +-f(DAC) (8 MHz, 6.67 MHz for 66 and 33 kBd). Level in one 30 kHz
   bin relative to the same bin at the top of the signal, both sides:
@@ -225,6 +324,9 @@ of the carrier itself.
   (+-6.67 MHz at 66 and 33 kBd), 27 dB (1 MBd) to 59 dB (33 kBd) below the signal in a 30 kHz bin, and the carrier's own noise forms
   a skirt about 35-40 dB below the signal level per bin. Add a band-pass filter and/or attenuation as your licence and
   local rules require.
+* DVB-S2: QPSK and 8PSK only (no 16APSK / 32APSK), 8PSK only at 200 to 500 kBd and 1 MBd, constant coding and modulation (one MODCOD for the whole stream, no ACM), one transport stream, roll-off 0.35
+  (the filter in the ESP), no input stream synchronisation (ISSY) or null packet deletion, no dummy PLFRAMEs (the stream is always
+  padded with null packets). Short frames have no 9/10.
 * Transmit only, and only in the 13 cm band: the firmware refuses to transmit outside 2300..2450 MHz.
 * The firmware calls undocumented PHY ROM functions and writes undocumented registers of the ESP32-C3 (found by reading the
   ROM and `libphy`). It was built and tested with ESP-IDF 6.2.0; other IDF or chip revisions may behave differently.
@@ -242,7 +344,10 @@ runs it at very low power. The software comes as is, without any warranty (see t
   precompiled PHY library `libphy.a` that ships with ESP-IDF.
 * **leansdr / leandvb** by pabr, https://github.com/pabr/leansdr: the independent DVB-S decoder used to verify the signal.
   Not included in this repository.
-* **ETSI EN 300 421**: the DVB-S standard.
+* **ETSI EN 300 421** and **EN 302 307**: the DVB-S and DVB-S2 standards. The DVB-S2 LDPC tables (annex B and C) in
+  `host/dvbs2_ldpc.json` were read out of GNU Radio's gr-dtv encoder by encoding unit vectors; no code from it was used.
+* **GNU Radio** (gr-dtv) and **SatDump**: the independent DVB-S2 transmitter and receiver used to verify the encoder. Not included
+  in this repository.
 * **FFmpeg** and **x264**: encoding of the demo and test streams. **NumPy**, **pySerial** and (for the optional RS cross-check)
   **reedsolo** on the PC side.
 * **Sintel** trailer (c) Blender Foundation, https://durian.blender.org, CC BY 3.0 (see `media/README.md`).

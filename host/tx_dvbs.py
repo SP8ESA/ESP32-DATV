@@ -17,6 +17,12 @@ When the source cannot keep up the script pads with null packets, so symbols nev
   python3 tx_dvbs.py --freq 2402.000 --baud 1000000 --fec 1/2
   Receiver: centre = --freq, symbol rate 1000 kS/s, FEC 1/2 (or auto). No lock: try --invert or --swap-iq.
 
+DVB-S2 instead of DVB-S (QPSK or 8PSK, normal or short frames, pilots optional):
+  python3 tx_dvbs.py --freq 2402.000 --baud 500000 --dvbs2 --fec 2/3 [--frame short] [--pilots]
+  python3 tx_dvbs.py --freq 2402.000 --baud 500000 --dvbs2 --mod 8psk --fec 2/3     (8PSK: 200..400 kBd clean, up to 500 kBd, code rates 3/5 .. 9/10)
+  python3 tx_dvbs.py --freq 2402.000 --baud 1000000 --dvbs2 --mod 8psk --fec 3/5    (8PSK at 1 MBd: 3 bits per symbol on the USB link, 375 kB/s)
+  Receiver: DVB-S2, QPSK or 8PSK, the same symbol rate, code rate, roll-off 0.35.
+
 Amateur radio use only, within the limits of your licence. The firmware refuses frequencies outside 2300..2450 MHz.
 """
 import argparse
@@ -31,6 +37,7 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import dvbs  # noqa: E402
+import dvbs2  # noqa: E402
 import esp_link  # noqa: E402
 
 CPU_HZ = 160e6
@@ -40,7 +47,7 @@ DEMO_FILM = os.path.join(HERE, "..", "media", "sintel_trailer.mp4")
 class TsSource:
     """Delivers 188-byte transport stream packets; take(n) pads with null packets when the source runs dry."""
 
-    def __init__(self, kind, arg, baud, fec, width=640, video_k=0):
+    def __init__(self, kind, arg, cap, width=640, video_k=0):
         self.q = queue.Queue(maxsize=400)
         self.kind = kind
         self.arg = arg
@@ -49,7 +56,6 @@ class TsSource:
         self.proc = None
         if kind == "null":
             return
-        cap = dvbs.ts_rate(baud, fec)
         mux = int(cap * 0.965)                                      # slightly below capacity: the rest is null padding
         # budget by channel capacity: audio, picture size / frame rate and the PSI repetition shrink for narrow channels
         if mux >= 600_000:
@@ -147,6 +153,17 @@ def auto_sps(baud):
     return 16 if baud * 16 <= 4_000_000 else 8 if baud * 8 <= 4_000_000 else 4
 
 
+def auto_sps_8psk(baud):
+    """8PSK runs only at 8 MS/s: the generic loop (lutg_psk8.S) with 16..40 samples per symbol, i.e. 200..500 kBd, the rate within 1 %, and the
+    dedicated 1 MBd loop (lutg_p8s8.S, 8 samples per symbol, 3 bits per symbol on the USB link)."""
+    if baud == 1_000_000:
+        return 8
+    sps = round(CPU_HZ / (20 * baud))
+    if 16 <= sps <= 40 and abs(CPU_HZ / (20 * sps) / baud - 1) <= 0.01:
+        return sps
+    raise SystemExit(f"8PSK: --baud must be 1000000 or {CPU_HZ // 20 // 40} .. {CPU_HZ // 20 // 16} Bd with 8 MS/s / baud a whole number of samples (e.g. 1000000, 500000, 400000, 333333, 250000, 200000)")
+
+
 def load_cal(path):
     """DC and I/Q imbalance trim (measured on the author's board; see README for how to calibrate yours)."""
     if not path or not os.path.exists(path):
@@ -160,11 +177,15 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--freq", type=float, default=2402.000, help="centre of the spectrum [MHz] (13 cm band)")
     ap.add_argument("--baud", type=int, default=1000000, help="symbol rate [Bd], 2000..1000000 (e.g. 33000 for narrow-band DATV)")
-    ap.add_argument("--fec", default="1/2", choices=list(dvbs.PUNCT))
+    ap.add_argument("--fec", default="1/2", help="code rate: DVB-S 1/2 2/3 3/4 5/6 7/8; with --dvbs2 1/4 1/3 2/5 1/2 3/5 2/3 3/4 4/5 5/6 8/9 9/10 (short frames: no 9/10)")
+    ap.add_argument("--dvbs2", action="store_true", help="DVB-S2 instead of DVB-S")
+    ap.add_argument("--mod", default="qpsk", choices=("qpsk", "8psk"), help="DVB-S2 modulation (8PSK: code rates 3/5 2/3 3/4 5/6 8/9 9/10, 200..500 kBd at 8 MS/s, clean up to 400 kBd)")
+    ap.add_argument("--frame", default="normal", choices=("normal", "short"), help="DVB-S2 FECFRAME size (normal 64800 bits, short 16200)")
+    ap.add_argument("--pilots", action="store_true", help="DVB-S2 pilots (36 symbols after every 16 slots)")
     ap.add_argument("--sps", type=int, default=0, help="DAC samples per symbol (4, 8, 16, or 16..232 when baud * sps is 8 or 6.67 MHz); 0 = automatic: the hand-scheduled 8 / 6.67 MS/s loops when they fit the symbol rate, else the most that keeps the output at or below 4 MS/s")
     ap.add_argument("--ifm", type=int, default=0, help="centre = LO + ifm * baud (puts the LO leakage outside the signal)")
-    ap.add_argument("--amp", type=int, default=300, help="peak amplitude in DAC codes (1..480)")
-    ap.add_argument("--target", type=int, default=3000, help="ESP symbol buffer fill to hold [pairs of 8 symbols]")
+    ap.add_argument("--amp", type=int, default=0, help="peak amplitude in DAC codes (1..480); 0 = 300, 8PSK 400 (same mean power as QPSK)")
+    ap.add_argument("--target", type=int, default=0, help="ESP symbol buffer fill to hold [pairs of 2 bytes] (default 3000, 6000 for 8PSK at 1 MBd: the ring holds 8192)")
     ap.add_argument("--film", help="video file to encode and loop (default: the demo film)")
     ap.add_argument("--width", type=int, default=640, help="--film: picture width")
     ap.add_argument("--video-k", type=int, default=0, help="--film/--test: video bit rate [kb/s] (0 = from the channel capacity)")
@@ -183,10 +204,19 @@ def main():
     a = ap.parse_args()
     if not esp_link.BAND[0] <= a.freq <= esp_link.BAND[1]:
         raise SystemExit("transmission only in the 13 cm band (2300..2450 MHz)")
+    if a.mod == "8psk" and not a.dvbs2:
+        raise SystemExit("--mod 8psk needs --dvbs2")
+    if not a.amp:
+        a.amp = 400 if a.mod == "8psk" else 300
     if not a.sps:
-        a.sps = auto_sps(a.baud)
+        a.sps = auto_sps_8psk(a.baud) if a.mod == "8psk" else auto_sps(a.baud)
+    if not a.target:
+        a.target = 6000 if a.mod == "8psk" and a.sps == 8 else 3000
     period = round(CPU_HZ / (a.baud * a.sps))
     baud_act = CPU_HZ / (period * a.sps)
+    if a.mod == "8psk" and 420000 < baud_act < 1000000:
+        print("note: 8PSK above 400 kBd needs about as many bytes per second as the USB link to the ESP delivers (about 260 kB/s): the ESP buffer runs dry now and then "
+              "and the receiver sees short drop-outs; 400 kBd and below are clean")
     if abs(baud_act / a.baud - 1) > 0.01:
         print(f"note: {a.sps} samples per symbol give {baud_act:.1f} Bd, not {a.baud}")
     if_hz = round(a.ifm * baud_act)
@@ -194,32 +224,63 @@ def main():
     dc4 = [round(16 * v) for v in dc]
     gq, ph = round(iq_g * 1e4), round(iq_p * 1e3)
     kind = "null" if a.null or a.cw else "ts" if a.ts else "test" if a.test else "film"
-    src = TsSource(kind, a.ts if kind == "ts" else a.film or DEMO_FILM, a.baud, a.fec, a.width, a.video_k)
-    enc = dvbs.Encoder(a.fec, swap_iq=a.swap_iq, invert=a.invert)
+    try:
+        if a.dvbs2:
+            cap = dvbs2.ts_rate(baud_act, a.fec, a.frame, a.pilots, a.mod)
+            enc = dvbs2.Encoder(a.fec, a.frame, a.pilots, swap_iq=a.swap_iq, invert=a.invert, mod=a.mod, bits3=a.sps == 8)
+        else:
+            if a.fec not in dvbs.PUNCT:
+                raise ValueError(f"DVB-S code rate: {', '.join(dvbs.PUNCT)} (DVB-S2: --dvbs2)")
+            cap = dvbs.ts_rate(baud_act, a.fec)
+            enc = dvbs.Encoder(a.fec, swap_iq=a.swap_iq, invert=a.invert)
+    except ValueError as e:
+        raise SystemExit(str(e))
+    src = TsSource(kind, a.ts if kind == "ts" else a.film or DEMO_FILM, cap, a.width, a.video_k)
     khz = round((a.freq * 1e6 - if_hz) / 1000 / (1 + a.ppm * 1e-6))
     link = esp_link.Link(esp_link.find_port(a.port))
     try:
         secs = int(a.seconds) + 30 if a.seconds else 86400
-        info = link.start(f"QPSKT {khz / 1000:.3f} {a.baud} {a.sps} {a.amp} {secs} {a.ifm} {a.target} {dc4[0]} {dc4[1]} {gq} {ph}")
+        info = link.start(f"{'PSK8T' if a.mod == '8psk' else 'QPSKT'} {khz / 1000:.3f} {a.baud} {a.sps} {a.amp} {secs} {a.ifm} {a.target} {dc4[0]} {dc4[1]} {gq} {ph}")
         kv = dict(zip(info.split()[2::2], info.split()[3::2]))
         lo_true = float(kv["LO"]) * (1 + a.ppm * 1e-6)
-        print(f"{info}\n" + ("UNMODULATED CARRIER (--cw)\n" if a.cw else "") + f"spectrum centre {(lo_true + if_hz) / 1e6:.6f} MHz (requested {a.freq:.6f}), {baud_act:.1f} Bd, FEC {a.fec}, "
-              f"RRC 0.35 occupies {baud_act * 1.35 / 1e3:.0f} kHz, TS capacity {dvbs.ts_rate(baud_act, a.fec) / 1e3:.0f} kb/s")
+        std = f"DVB-S2 {a.mod.upper()} {a.frame} frame{', pilots' if a.pilots else ''}" if a.dvbs2 else "DVB-S"
+        print(f"{info}\n" + ("UNMODULATED CARRIER (--cw)\n" if a.cw else "") + f"spectrum centre {(lo_true + if_hz) / 1e6:.6f} MHz (requested {a.freq:.6f}), {baud_act:.1f} Bd, "
+              f"{std} FEC {a.fec}, RRC 0.35 occupies {baud_act * 1.35 / 1e3:.0f} kHz, TS capacity {cap / 1e3:.0f} kb/s")
+        # The USB link carries more with bigger writes (64 bytes: 360 kB/s, 2 kB: 420 kB/s, 64 kB: 430 kB/s): at 1 MBd 8PSK (375 kB/s) write in big pieces
+        min_todo, max_chunk = (400, 2048) if a.sps == 8 and a.mod == "8psk" else (32, 1024)
         buf = b""
+        # The encoder runs in its own thread, ahead of the USB writes: the kernel takes about one write at a time, so encoding between two writes leaves the
+        # link idle (a loop that encodes and writes alternately delivered 360 kB/s, a pre-encoded stream 420 kB/s)
+        ready = queue.Queue(maxsize=48)
+        stop_enc = threading.Event()
+
+        def feeder():
+            while not stop_enc.is_set():
+                try:
+                    ready.put(b"\x00" * 4096 if a.cw and a.mod == "8psk" else b"\xFF" * 4096 if a.cw else enc.encode(src.take(8)), timeout=0.1)     # 0xFF = four QPSK symbols (+1, +1) / 0x00 = two 8PSK symbols (1, 0): a carrier
+                except queue.Full:
+                    pass
+
+        threading.Thread(target=feeder, daemon=True).start()
         t_start = t_rep = time.time()
         fmin, fmax = 10 ** 9, 0
         while not a.seconds or time.time() - t_start < a.seconds:
             link.poll()
             if link.reports:
                 fmin, fmax = min(fmin, link.fill), max(fmax, link.fill)
-            todo = a.target - (link.fill + link.sent_since)               # in pairs of 2 bytes (8 symbols)
-            if todo >= 32:
-                nb = 2 * min(todo, 1024)
+            todo = a.target - (link.fill + link.sent_since)               # in pairs of 2 bytes
+            if todo >= min_todo:
+                nb = 2 * min(todo, max_chunk)
                 while len(buf) < nb:
-                    buf += b"\xFF" * nb if a.cw else enc.encode(src.take(8))      # 0xFF = four symbols (+1, +1): a carrier
-                link.send(buf[:nb])                                       # raw symbol bytes, no framing
-                buf = buf[nb:]
-                link.sent_since += nb // 2
+                    try:
+                        buf += ready.get(timeout=0.05)
+                    except queue.Empty:
+                        break
+                nb = min(nb, len(buf))
+                if nb:
+                    link.send(buf[:nb])                                   # raw symbol bytes, no framing
+                    buf = buf[nb:]
+                    link.sent_since += nb // 2
             else:
                 time.sleep(0.0005)
             if time.time() - t_rep > 2:
@@ -228,6 +289,10 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
+        try:
+            stop_enc.set()
+        except NameError:
+            pass
         src.close()
         print(link.finish())
 

@@ -41,11 +41,22 @@ if "--rec" in sys.argv:
 assert REC in ("none", "timing", "words")
 SCHED = "--nosched" not in sys.argv
 RAW = "--raw" in sys.argv          # no padding at all: the timing build then shows the true cost of every slot
+PSK8 = "--psk8" in sys.argv        # the 8PSK variant: 3 bit symbols (one per nibble in the ring), 6 bit table indices, 256 byte sample stride
 HERE = os.path.dirname(os.path.abspath(__file__))
-PADFILE = os.path.join(HERE, "lutg_pads.json")
+PADFILE = os.path.join(HERE, "lutg_psk8_pads.json" if PSK8 else "lutg_pads.json")
 PADS_ALL = json.load(open(PADFILE)) if os.path.exists(PADFILE) else {}
 
 E = 13               # unrolled event slots per symbol (S >= E + 3)
+FN = "lutg_psk8_run_p" if PSK8 else "lutg_run_p"
+STRIDE = 256 if PSK8 else 64          # bytes from one sample's table row to the next
+ADJ_SLOT, ADJ = 6, 7 * 256            # 8PSK: the offsets of the unrolled slots would exceed the 12 bit immediate: the row pointers move on after slot 6
+
+
+def koff(j):
+    """Immediate offset of the kern loads of unrolled slot j (the row pointers point at sample 0 of the symbol, see a_mv)."""
+    if PSK8 and j > ADJ_SLOT:
+        return STRIDE * (j + 1) - ADJ
+    return STRIDE * (j + 1)
 SLED = 24            # nops in each sync sled
 MIN_S = E + 3
 COPIES = ("N", "A", "B", "C")        # N normal, A/B/C = M1/M2/M3
@@ -90,7 +101,12 @@ class Slot:
             sys.stderr.write(f"WARNING P={self.P} slot {self.key}: estimated {self.cost:.1f} cycles, over the period\n")
             n = 0
         EFFECTIVE.setdefault(str(self.P), {})[self.key] = n
-        lines = schedule(self.lines) if SCHED else self.lines
+        src = self.lines
+        pre = 0 if RAW else self.pads.get(self.key + "p", 0)        # nops right after the store: they move a USB access against the 48 MHz clock
+        if pre and src[0].startswith("    sw   t3, 0(a6)"):
+            EFFECTIVE[str(self.P)][self.key + "p"] = pre
+            src = src[:3] + [f"    .rept {pre}\n    nop\n    .endr"] + src[3:]
+        lines = schedule(src) if SCHED else src
         if n:
             lines = lines + [f"    .rept {n}\n    nop\n    .endr"]
         return "\n".join(lines)
@@ -204,7 +220,7 @@ def a_qend():                         # end value of s1 for the loop (s1 still a
 
 
 def a_fill():                         # gp = ring has a symbol (not an underrun), a4 = ring has room for a USB packet
-    return ["    lw   t6, RLIM(s0)", "    slli t5, s11, 2", "    sub  t5, t5, a7", "    slt  gp, zero, t5", "    slt  a4, t5, t6"], 5
+    return ["    lw   t6, RLIM(s0)", f"    slli t5, s11, {1 if PSK8 else 2}", "    sub  t5, t5, a7", "    slt  gp, zero, t5", "    slt  a4, t5, t6"], 5
 
 
 def a_nsym(c, r="s5"):                # symbols left; leave when done (s5..s8 are free until the next-pointer events write them)
@@ -212,10 +228,12 @@ def a_nsym(c, r="s5"):                # symbols left; leave when done (s5..s8 ar
 
 
 def a_xa():                           # t6 = ring byte holding the next symbol
-    return ["    lw   t6, RING(s0)", "    srli t5, a7, 2", "    slli t5, t5, 18", "    srli t5, t5, 18", "    add  t5, t5, t6", "    lbu  t6, 0(t5)"], 6
+    return ["    lw   t6, RING(s0)", f"    srli t5, a7, {1 if PSK8 else 2}", "    slli t5, t5, 18", "    srli t5, t5, 18", "    add  t5, t5, t6", "    lbu  t6, 0(t5)"], 6
 
 
 def a_xb():                           # take the symbol out of the byte, shift it into the history, advance unless underrun
+    if PSK8:                          # nibbles: two symbols per byte, 3 bit symbols in the history
+        return ["    andi t5, a7, 1", "    slli t5, t5, 2", "    srl  t6, t6, t5", "    andi t6, t6, 7", "    slli a2, a2, 3", "    or   a2, a2, t6", "    add  a7, a7, gp"], 7
     return ["    andi t5, a7, 3", "    slli t5, t5, 1", "    srl  t6, t6, t5", "    andi t6, t6, 3", "    slli a2, a2, 2", "    or   a2, a2, t6", "    add  a7, a7, gp"], 7
 
 
@@ -225,7 +243,12 @@ def a_under():
 
 def a_nptr(g, r=("t5", "t6")):        # next symbol's row pointer of group g: T_g + 4 * ((C >> 4g) & 15)
     a, b = r
-    sh = {0: f"    slli {a}, a2, 2", 1: f"    srli {a}, a2, 2", 2: f"    srli {a}, a2, 6", 3: f"    srli {a}, a2, 10"}[g]
+    if PSK8:                          # 6 bits per group of two symbols: the index times 4 = (C >> (6 g - 2)) & 252
+        sh = {0: f"    slli {a}, a2, 2", 1: f"    srli {a}, a2, 4", 2: f"    srli {a}, a2, 10", 3: f"    srli {a}, a2, 16"}[g]
+    else:
+        sh = {0: f"    slli {a}, a2, 2", 1: f"    srli {a}, a2, 2", 2: f"    srli {a}, a2, 6", 3: f"    srli {a}, a2, 10"}[g]
+    if PSK8:                          # the base goes straight into the destination: s9 holds the loop end pointer and must not be a temporary
+        return [f"    lw   {NQ[g]}, T{g}(s0)", sh, f"    andi {a}, {a}, 252", f"    add  {NQ[g]}, {NQ[g]}, {a}"], 4
     return [f"    lw   {b}, T{g}(s0)", sh, f"    andi {a}, {a}, 60", f"    add  {NQ[g]}, {a}, {b}"], 4
 
 
@@ -238,10 +261,14 @@ def a_mcn_b():                        # s10 = sled end of the next copy (N or A)
 
 
 def a_av():                           # USB: is a byte waiting (consumed in the next slot, an APB read costs ~6 cycles)
+    if PSK8:                          # the first use of the result in the same slot: the read stalls here, so the nops after it count exactly
+        return ["    lw   t5, 4(a3)", "    srli t5, t5, 2"], 7
     return ["    lw   t5, 4(a3)"], 6
 
 
 def a_avc():
+    if PSK8:
+        return ["    andi t5, t5, 1", "    and  a4, a4, t5"], 2
     return ["    srli t5, t5, 2", "    andi t5, t5, 1", "    and  a4, a4, t5"], 3
 
 
@@ -256,7 +283,11 @@ def a_sb():                           # byte into the ring (harmless garbage whe
 
 
 def a_qadj():                         # row pointers for the loop: sample E + 1
-    return [f"    addi {q}, {q}, {64 * (E + 1)}" for q in Q], 4
+    return [f"    addi {q}, {q}, {STRIDE * (E + 1) - (ADJ if PSK8 else 0)}" for q in Q], 4
+
+
+def a_adj():                          # 8PSK: row pointers on by 7 samples (keeps the immediates of the later slots small)
+    return [f"    addi {q}, {q}, {ADJ}" for q in Q], 4
 
 
 # maintenance
@@ -285,7 +316,7 @@ def a_next(nsname, reload=False):
 
 
 def a_rep_calc():
-    return ["    slli t5, s11, 2", "    sub  t5, t5, a7", "    srli t5, t5, 3", "    li   gp, 0xB7"], 4
+    return [f"    slli t5, s11, {1 if PSK8 else 2}", "    sub  t5, t5, a7", f"    srli t5, t5, {2 if PSK8 else 3}", "    li   gp, 0xB7"], 4
 
 
 def a_wr(prep):                       # one USB FIFO write (the FIFO ignores writes when it is full)
@@ -314,7 +345,34 @@ def copy_code(P, c, pads):
     sch[3] = [a_xb]
     sch[4] = [a_under, lambda: a_nptr(0, ("tp", "s9"))]
     sch[5] = [lambda: a_nptr(1), lambda: a_nptr(2, ("tp", "s9"))]
-    if c == "N":
+    if PSK8:
+        sch[1] = [a_fill, a_qend]        # a_qend needs s1 before a_adj
+        sch[ADJ_SLOT] = [lambda: a_nptr(3), a_adj]
+        if c == "N":
+            sch[7] = [a_av]
+            sch[8] = [a_avc, a_mcn_a]
+            sch[9] = [lambda: a_rd(c, stubs)]
+            sch[10] = [a_sb, a_mcn_b]
+        elif c == "A":
+            sch[ADJ_SLOT].append(lambda: a_next("NS_B"))
+            sch[7] = [a_sil1]
+            sch[8] = [a_sil2]
+            sch[9] = [lambda: a_sil3a(c)]
+            sch[10] = [a_sil3b]
+        elif c == "B":
+            sch[ADJ_SLOT].append(lambda: a_next("NS_C"))
+            sch[7] = [a_rep_calc]
+            sch[8] = [lambda: a_wr([])]
+            sch[9] = [lambda: a_wr(["    andi gp, t5, 255"])]
+            sch[10] = [lambda: a_wr(["    srli gp, t5, 8"])]
+        else:
+            sch[7] = [a_rep_under]
+            sch[8] = [lambda: a_wr([])]
+            sch[9] = [a_flush]
+            sch[11] = [lambda: a_next("NS_N", reload=True)]
+        sch[11] = sch[11] + [lambda: a_nsym(c, "tp")] if sch[11] else [lambda: a_nsym(c, "tp")]
+        sch[12] = [a_qadj]
+    elif c == "N":
         sch[6] = [lambda: a_nptr(3), a_mcn_a]
         sch[7] = [a_av]
         sch[8] = [a_avc, a_mcn_b]
@@ -337,8 +395,9 @@ def copy_code(P, c, pads):
         sch[7] = [a_rep_under]
         sch[8] = [lambda: a_wr([])]
         sch[9] = [a_flush]
-    sch[11] = [lambda: a_nsym(c, "tp"), a_qend]
-    sch[12] = [a_qadj]
+    if not PSK8:
+        sch[11] = [lambda: a_nsym(c, "tp"), a_qend]
+        sch[12] = [a_qadj]
     for j in range(E):
         s = Slot(P, f"{c}{j}", pads)
         L, cst = store_unrolled(j)
@@ -349,7 +408,7 @@ def copy_code(P, c, pads):
             fl = [f for f in sch[0] if f is not a_mv]
         else:
             fl = sch[j]
-        s.add(kern(64 * (j + 1), Q), KERN)
+        s.add(kern(koff(j), Q), KERN)
         for f in fl:
             L, cst = f()
             s.add(L, cst)
@@ -368,8 +427,8 @@ def copy_code(P, c, pads):
         s.add(["    sw   t3, 0(a6)", "    mv   ra, t3", "    sw   ra, 0(tp)", "    addi tp, tp, 4"], 4)
     else:
         s.add(["    sw   t3, 0(a6)", "    nop", "    nop", "    nop"], 4)
-    s.add(["    lw   t0, 0(s1)", "    lw   t1, 0(s2)", "    addi s1, s1, 64", "    addi s2, s2, 64", "    lw   t2, 0(s3)", "    lw   t4, 0(s4)",
-           "    addi s3, s3, 64", "    addi s4, s4, 64", "    add  t0, t0, t1", "    add  t0, t0, t2", "    add  t0, t0, t4", "    xor  t3, t0, a5"], 12)
+    s.add(["    lw   t0, 0(s1)", "    lw   t1, 0(s2)", f"    addi s1, s1, {STRIDE}", f"    addi s2, s2, {STRIDE}", "    lw   t2, 0(s3)", "    lw   t4, 0(s4)",
+           f"    addi s3, s3, {STRIDE}", f"    addi s4, s4, {STRIDE}", "    add  t0, t0, t1", "    add  t0, t0, t2", "    add  t0, t0, t4", "    xor  t3, t0, a5"], 12)
     s.cost += 3                                                     # taken branch
     out.append(f"/* {c} loop */\n" + s.finish() + f"\n    beq  s1, s9, {ll}x\n    j    {ll}\n{ll}x:")     # both paths cost 3 cycles
     # ---- D: measure
@@ -418,10 +477,10 @@ def function(P):
     PADS = pads
     CUR_P = P
     f = [f"""
-    .global lutg_run_p{P}
-    .type lutg_run_p{P}, @function
+    .global {FN}{P}
+    .type {FN}{P}, @function
     .align 4
-lutg_run_p{P}:
+{FN}{P}:
     addi sp, sp, -64
     sw   ra, 0(sp)
     sw   s0, 4(sp)
@@ -508,7 +567,7 @@ lutg_run_p{P}:
     addi sp, sp, 64
     li   a0, 0
     ret
-    .size lutg_run_p{P}, . - lutg_run_p{P}
+    .size {FN}{P}, . - {FN}{P}
 """)
     return "\n".join(f)
 
@@ -518,8 +577,8 @@ emit("/* Generated by gen_lutg.py - do not edit by hand (rec mode: " + REC + ").
      " * P = 20 or 24 CPU cycles (8 or 6.67 MS/s at 160 MHz), tables of 4 groups x 16 rows x S words (RRC span 8). Context: struct lutg_ctx_t in main.c. */" % MIN_S)
 for k, v in CTX.items():
     emit(f"    .equ {k}, {v}")
-emit('    .section .iram1.lutg, "ax"\n    .option norvc')
-for P in (20, 24):
+emit(f'    .section .iram1.{"lutg_psk8" if PSK8 else "lutg"}, "ax"\n    .option norvc')
+for P in ((20,) if PSK8 else (20, 24)):
     emit(function(P))
 print("\n".join(o))
-json.dump(EFFECTIVE, open(os.path.join(HERE, "lutg_pads_used.json"), "w"), indent=0)
+json.dump(EFFECTIVE, open(os.path.join(HERE, "lutg_psk8_pads_used.json" if PSK8 else "lutg_pads_used.json"), "w"), indent=0)
