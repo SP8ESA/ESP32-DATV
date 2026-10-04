@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/meme.jpg" alt="Is this a 2.4GHz DATV transmitter? (an ESP32-C3 SuperMini)" width="620"></p>
+
 # ESP32-DATV
 
 DVB-S / DVB-S2 video transmitter using the ESP32-C3's own 2.4 GHz RF hardware.
@@ -90,70 +92,71 @@ packets: DVB-S QPSK 1/2, DVB-S2 8PSK 3/5 and 16APSK 2/3. Three sweeps averaged i
 three-bin smoothing for display. [Raw sweeps and CSVs](docs/spectra/) ·
 [Measurement settings](docs/spectra/measurement.json).
 
-<details>
-<summary>QPSK — 33 to 1000 kS/s</summary>
+### QPSK — 33 to 1000 kS/s
 
-![QPSK 1 MS/s measured spectrum](docs/spectrum_1MBd.png)
+<table>
+  <tr>
+    <td width="50%" align="center"><strong>1 MS/s</strong><br><a href="docs/spectrum_1MBd.png"><img src="docs/spectrum_1MBd.png" alt="QPSK 1 MS/s measured spectrum" width="100%"></a></td>
+    <td width="50%" align="center"><strong>500 kS/s</strong><br><a href="docs/spectrum_500kBd.png"><img src="docs/spectrum_500kBd.png" alt="QPSK 500 kS/s measured spectrum" width="100%"></a></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><strong>333 kS/s</strong><br><a href="docs/spectrum_333kBd.png"><img src="docs/spectrum_333kBd.png" alt="QPSK 333 kS/s measured spectrum" width="100%"></a></td>
+    <td width="50%" align="center"><strong>250 kS/s</strong><br><a href="docs/spectrum_250kBd.png"><img src="docs/spectrum_250kBd.png" alt="QPSK 250 kS/s measured spectrum" width="100%"></a></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><strong>125 kS/s</strong><br><a href="docs/spectrum_125kBd.png"><img src="docs/spectrum_125kBd.png" alt="QPSK 125 kS/s measured spectrum" width="100%"></a></td>
+    <td width="50%" align="center"><strong>66 kS/s</strong><br><a href="docs/spectrum_66kBd.png"><img src="docs/spectrum_66kBd.png" alt="QPSK 66 kS/s measured spectrum" width="100%"></a></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><strong>33 kS/s</strong><br><a href="docs/spectrum_33kBd.png"><img src="docs/spectrum_33kBd.png" alt="QPSK 33 kS/s measured spectrum" width="100%"></a></td>
+    <td width="50%"></td>
+  </tr>
+</table>
 
-![QPSK 500 kS/s measured spectrum](docs/spectrum_500kBd.png)
+### 8PSK — 33 to 1000 kS/s
 
-![QPSK 333 kS/s measured spectrum](docs/spectrum_333kBd.png)
+<table>
+  <tr>
+    <td width="50%" align="center"><strong>1 MS/s</strong><br><a href="docs/spectrum_8PSK_1MBd.png"><img src="docs/spectrum_8PSK_1MBd.png" alt="8PSK 1 MS/s measured spectrum" width="100%"></a></td>
+    <td width="50%" align="center"><strong>500 kS/s</strong><br><a href="docs/spectrum_8PSK_500kBd.png"><img src="docs/spectrum_8PSK_500kBd.png" alt="8PSK 500 kS/s measured spectrum" width="100%"></a></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><strong>333 kS/s</strong><br><a href="docs/spectrum_8PSK_333kBd.png"><img src="docs/spectrum_8PSK_333kBd.png" alt="8PSK 333 kS/s measured spectrum" width="100%"></a></td>
+    <td width="50%" align="center"><strong>250 kS/s</strong><br><a href="docs/spectrum_8PSK_250kBd.png"><img src="docs/spectrum_8PSK_250kBd.png" alt="8PSK 250 kS/s measured spectrum" width="100%"></a></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><strong>125 kS/s</strong><br><a href="docs/spectrum_8PSK_125kBd.png"><img src="docs/spectrum_8PSK_125kBd.png" alt="8PSK 125 kS/s measured spectrum" width="100%"></a></td>
+    <td width="50%" align="center"><strong>66 kS/s</strong><br><a href="docs/spectrum_8PSK_66kBd.png"><img src="docs/spectrum_8PSK_66kBd.png" alt="8PSK 66 kS/s measured spectrum" width="100%"></a></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><strong>33 kS/s</strong><br><a href="docs/spectrum_8PSK_33kBd.png"><img src="docs/spectrum_8PSK_33kBd.png" alt="8PSK 33 kS/s measured spectrum" width="100%"></a></td>
+    <td width="50%"></td>
+  </tr>
+</table>
 
-![QPSK 250 kS/s measured spectrum](docs/spectrum_250kBd.png)
+### 16APSK — 33 to 500 kS/s
 
-![QPSK 125 kS/s measured spectrum](docs/spectrum_125kBd.png)
+<table>
+  <tr>
+    <td width="50%" align="center"><strong>500 kS/s</strong><br><a href="docs/spectrum_16APSK_500kBd.png"><img src="docs/spectrum_16APSK_500kBd.png" alt="16APSK 500 kS/s measured spectrum" width="100%"></a></td>
+    <td width="50%" align="center"><strong>333 kS/s</strong><br><a href="docs/spectrum_16APSK_333kBd.png"><img src="docs/spectrum_16APSK_333kBd.png" alt="16APSK 333 kS/s measured spectrum" width="100%"></a></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><strong>250 kS/s</strong><br><a href="docs/spectrum_16APSK_250kBd.png"><img src="docs/spectrum_16APSK_250kBd.png" alt="16APSK 250 kS/s measured spectrum" width="100%"></a></td>
+    <td width="50%" align="center"><strong>125 kS/s</strong><br><a href="docs/spectrum_16APSK_125kBd.png"><img src="docs/spectrum_16APSK_125kBd.png" alt="16APSK 125 kS/s measured spectrum" width="100%"></a></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><strong>66 kS/s</strong><br><a href="docs/spectrum_16APSK_66kBd.png"><img src="docs/spectrum_16APSK_66kBd.png" alt="16APSK 66 kS/s measured spectrum" width="100%"></a></td>
+    <td width="50%" align="center"><strong>33 kS/s</strong><br><a href="docs/spectrum_16APSK_33kBd.png"><img src="docs/spectrum_16APSK_33kBd.png" alt="16APSK 33 kS/s measured spectrum" width="100%"></a></td>
+  </tr>
+</table>
 
-![QPSK 66 kS/s measured spectrum](docs/spectrum_66kBd.png)
-
-![QPSK 33 kS/s measured spectrum](docs/spectrum_33kBd.png)
-
-</details>
-
-<details>
-<summary>8PSK — 33 to 1000 kS/s</summary>
-
-![8PSK 1 MS/s measured spectrum](docs/spectrum_8PSK_1MBd.png)
-
-![8PSK 500 kS/s measured spectrum](docs/spectrum_8PSK_500kBd.png)
-
-![8PSK 333 kS/s measured spectrum](docs/spectrum_8PSK_333kBd.png)
-
-![8PSK 250 kS/s measured spectrum](docs/spectrum_8PSK_250kBd.png)
-
-![8PSK 125 kS/s measured spectrum](docs/spectrum_8PSK_125kBd.png)
-
-![8PSK 66 kS/s measured spectrum](docs/spectrum_8PSK_66kBd.png)
-
-![8PSK 33 kS/s measured spectrum](docs/spectrum_8PSK_33kBd.png)
-
-</details>
-
-<details>
-<summary>16APSK — 33 to 500 kS/s</summary>
-
-![16APSK 500 kS/s measured spectrum](docs/spectrum_16APSK_500kBd.png)
-
-![16APSK 333 kS/s measured spectrum](docs/spectrum_16APSK_333kBd.png)
-
-![16APSK 250 kS/s measured spectrum](docs/spectrum_16APSK_250kBd.png)
-
-![16APSK 125 kS/s measured spectrum](docs/spectrum_16APSK_125kBd.png)
-
-![16APSK 66 kS/s measured spectrum](docs/spectrum_16APSK_66kBd.png)
-
-![16APSK 33 kS/s measured spectrum](docs/spectrum_16APSK_33kBd.png)
-
-</details>
-
-<details>
-<summary>Amplitude sweep — 8PSK and 16APSK at 500 kS/s</summary>
+### Amplitude sweep — 8PSK and 16APSK at 500 kS/s
 
 Separate amplitude measurement. Above about `--amp 430`, the output compresses and
 out-of-band emissions increase.
 
 ![Amplitude sweep at 500 kS/s](docs/amplitude_500kBd.png)
-
-</details>
 
 ## License
 
