@@ -134,20 +134,31 @@ three-bin smoothing for display. [Raw sweeps and CSVs](docs/spectra/) ·
   </tr>
 </table>
 
-### 16APSK — 33 to 500 kS/s
+### 16APSK — 33 to 500 kS/s, plus a 1 MS/s prototype
+
+The experimental 1 MS/s build reads USB data four bytes at a time from full 64-byte
+packets and uses a 2 MS/s DAC (2 samples per symbol). This measurement includes pilots.
+DAC images repeat every 2 MHz; their peaks are only 13–14 dB below the main-channel peak
+(RBW 30 kHz), so output filtering is needed. Standard firmware still limits 16APSK to
+500 kS/s. [Prototype settings and raw data](docs/spectra/16apsk_1MBd_measurement.json) ·
+[Experimental patch](docs/spectra/16apsk_1MBd_prototype.patch).
 
 <table>
   <tr>
+    <td width="50%" align="center"><strong>1 MS/s — prototype</strong><br><a href="docs/spectrum_16APSK_1MBd.png"><img src="docs/spectrum_16APSK_1MBd.png" alt="Experimental 16APSK 1 MS/s measured spectrum, DAC 2 MS/s" width="100%"></a></td>
     <td width="50%" align="center"><strong>500 kS/s</strong><br><a href="docs/spectrum_16APSK_500kBd.png"><img src="docs/spectrum_16APSK_500kBd.png" alt="16APSK 500 kS/s measured spectrum" width="100%"></a></td>
+  </tr>
+  <tr>
     <td width="50%" align="center"><strong>333 kS/s</strong><br><a href="docs/spectrum_16APSK_333kBd.png"><img src="docs/spectrum_16APSK_333kBd.png" alt="16APSK 333 kS/s measured spectrum" width="100%"></a></td>
-  </tr>
-  <tr>
     <td width="50%" align="center"><strong>250 kS/s</strong><br><a href="docs/spectrum_16APSK_250kBd.png"><img src="docs/spectrum_16APSK_250kBd.png" alt="16APSK 250 kS/s measured spectrum" width="100%"></a></td>
-    <td width="50%" align="center"><strong>125 kS/s</strong><br><a href="docs/spectrum_16APSK_125kBd.png"><img src="docs/spectrum_16APSK_125kBd.png" alt="16APSK 125 kS/s measured spectrum" width="100%"></a></td>
   </tr>
   <tr>
+    <td width="50%" align="center"><strong>125 kS/s</strong><br><a href="docs/spectrum_16APSK_125kBd.png"><img src="docs/spectrum_16APSK_125kBd.png" alt="16APSK 125 kS/s measured spectrum" width="100%"></a></td>
     <td width="50%" align="center"><strong>66 kS/s</strong><br><a href="docs/spectrum_16APSK_66kBd.png"><img src="docs/spectrum_16APSK_66kBd.png" alt="16APSK 66 kS/s measured spectrum" width="100%"></a></td>
+  </tr>
+  <tr>
     <td width="50%" align="center"><strong>33 kS/s</strong><br><a href="docs/spectrum_16APSK_33kBd.png"><img src="docs/spectrum_16APSK_33kBd.png" alt="16APSK 33 kS/s measured spectrum" width="100%"></a></td>
+    <td width="50%"></td>
   </tr>
 </table>
 

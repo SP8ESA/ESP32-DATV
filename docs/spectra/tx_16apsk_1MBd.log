@@ -1,0 +1,19 @@
+note: 16APSK at 1000 kBd needs 500 kB/s over the USB link to the ESP, which carries about 262 kB/s at 500 kBd and depends on the ESP's read rate: watch the 'ESP buffer' lines, if it runs dry the receiver sees short drop-outs (lower the symbol rate)
+calibration cal.json: DC [-1.401, 2.938] codes, Q gain 0.99944, Q phase 0.079 deg
+OK QPSKT LO 2369971619 BAUD 1000000.000 OUT 2000000 AMP 300 SPS 2 PERIOD 80 IF 0 TARGET 4000 MOD 16APSK REM 0 DIV 2000000 SREM 0 SDIV 1
+spectrum centre 2370.000059 MHz (requested 2370.000000), 1000000.0 Bd, DVB-S2 16APSK normal frame, pilots FEC 2/3, RRC 0.35 occupies 1350 kHz, TS capacity 2575 kb/s
+  ESP buffer 0..3641 pairs, TS packets: 0 from the source, 3712 null
+  ESP buffer 2865..3697 pairs, TS packets: 0 from the source, 7136 null
+  ESP buffer 2929..3633 pairs, TS packets: 0 from the source, 10568 null
+  ESP buffer 2609..3665 pairs, TS packets: 0 from the source, 13992 null
+  ESP buffer 2961..3665 pairs, TS packets: 0 from the source, 17424 null
+  ESP buffer 2961..3633 pairs, TS packets: 0 from the source, 20848 null
+  ESP buffer 1809..3669 pairs, TS packets: 0 from the source, 24272 null
+  ESP buffer 2673..3695 pairs, TS packets: 0 from the source, 27672 null
+  ESP buffer 2865..3665 pairs, TS packets: 0 from the source, 31104 null
+  ESP buffer 2577..3665 pairs, TS packets: 0 from the source, 34528 null
+  ESP buffer 2961..3665 pairs, TS packets: 0 from the source, 37960 null
+  ESP buffer 2929..3633 pairs, TS packets: 0 from the source, 41384 null
+  ESP buffer 2545..3665 pairs, TS packets: 0 from the source, 44816 null
+  ESP buffer 2961..3665 pairs, TS packets: 0 from the source, 48240 null
+TX END symbols=59703310 bytes_in=14635264 underruns=581128 late_slots=0 (lag bits 0x0) buffer=0 pairs startup_under=91335 active_under=0 (host silent or time over)

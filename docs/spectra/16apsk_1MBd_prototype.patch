@@ -1,0 +1,205 @@
+--- a/firmware/main/main.c
++++ b/firmware/main/main.c
+@@ -399,7 +399,7 @@
+ #define LUTG8_MAX_S 64                                              /* 8PSK tables take 1024 * S bytes: 64 KB at S = 64 (125 kBd) next to the 16 KB ring is what the heap holds */
+ #define LUTA16_MIN_S 16                                             /* 16APSK tables take 3072 * S bytes: 74 KB at S = 24 is all the heap holds */
+ #define LUTA16_MAX_S 24
+-#define LUTA16_C_MIN_S 4
++#define LUTA16_C_MIN_S 2
+ #define LUTA16_C_MIN_PERIOD 80u
+ #define LUT_RING_A16 8192u
+ #define LUTG8_S8 8
+@@ -567,16 +567,19 @@
+     return nsym;
+ }
+
++static uint32_t a16_startup_under, a16_active_under;
++
+ /* Row-major 16APSK tables at a slower DAC rate. All six RRC symbols remain in the history.
+- * Symbol work is in slot 0 and USB/maintenance in slot 1.
++ * At two samples/symbol (1 MBd), symbol work is in slot 0 and USB/maintenance in slot 1.
+  * Reports are spread across eight successive symbols, so small SPS needs no long sample slot. */
+-static uint32_t IRAM_ATTR __attribute__((noinline)) tx_a16_c(lut_io_t *io, uint8_t *qb, const int32_t *T, uint32_t S,
+-                                                              sample_clock_t clock, uint32_t max_sym, uint32_t *rec) {
++static inline uint32_t IRAM_ATTR __attribute__((always_inline)) tx_a16_clocked(lut_io_t *io, uint8_t *qb, const int32_t *T, uint32_t S,
++                                                              sample_clock_t clock, uint32_t max_sym, uint32_t *rec, uint32_t reads) {
+     const uint32_t gs = 256u * S;
+     const int32_t *r0 = T, *r1 = T + gs, *r2 = T + 2u * gs, *n0 = r0, *n1 = r1, *n2 = r2;
+     uint32_t history = 0, qw = 0, qr = 0, under = 0, late = 0, nsym = 0;
+     uint32_t tn = ccount() + 20000u, phase = 0, qw_seen = 0, t_rx = ccount(), repw = 0;
+     bool reporting = false;
++    uint32_t usb_left = 0;
+ #ifdef LUTG_REC
+     qw = LUT_RING_A16 - 128u;
+ #endif
+@@ -605,8 +608,25 @@
+                 n2 = T + 2u * gs + ((history >> 16) & 255u) * S;
+             } else if (j == 1u) {
+                 if (step >= 8u) {
+-                    if (qw - (qr >> 1) < LUT_RING_A16 - 64u && USB_SERIAL_JTAG.ep1_conf.serial_out_ep_data_avail)
+-                        qb[qw++ & (LUT_RING_A16 - 1u)] = (uint8_t)USB_SERIAL_JTAG.ep1.val;
++                    if (reads == 4u) {
++                        if (qw - (qr >> 1) < LUT_RING_A16 - 64u) {
++                            if (usb_left) {
++                                const uint32_t b0 = USB_SERIAL_JTAG.ep1.val;
++                                const uint32_t b1 = USB_SERIAL_JTAG.ep1.val;
++                                const uint32_t b2 = USB_SERIAL_JTAG.ep1.val;
++                                const uint32_t b3 = USB_SERIAL_JTAG.ep1.val;
++                                *(uint32_t *)(qb + (qw & (LUT_RING_A16 - 1u))) =
++                                    b0 | (b1 << 8) | (b2 << 16) | (b3 << 24);
++                                qw += 4u;
++                                usb_left -= 4u;
++                            } else if (USB_SERIAL_JTAG.ep1_conf.serial_out_ep_data_avail) {
++                                usb_left = 64u;
++                            }
++                        }
++                    } else {
++                        if (qw - (qr >> 1) < LUT_RING_A16 - 64u && USB_SERIAL_JTAG.ep1_conf.serial_out_ep_data_avail)
++                            qb[qw++ & (LUT_RING_A16 - 1u)] = (uint8_t)USB_SERIAL_JTAG.ep1.val;
++                    }
+                 } else if (step == 0u) {
+                     reporting = USB_SERIAL_JTAG.ep1_conf.serial_in_ep_data_free;
+                 } else if (step == 1u) {
+@@ -619,8 +639,11 @@
+                 } else {
+ #ifndef LUTG_REC
+                     const uint32_t t = ccount();
+-                    if (qw != qw_seen) { qw_seen = qw; t_rx = t; }
+-                    else if (t - t_rx > (qw ? CPU_HZ / 2 : 3 * CPU_HZ)) goto out;
++                    if (qw != qw_seen) {
++                        if (!qw_seen) a16_startup_under = under;
++                        a16_active_under = under - a16_startup_under;
++                        qw_seen = qw; t_rx = t;
++                    } else if (t - t_rx > (qw ? CPU_HZ / 2 : 3 * CPU_HZ)) goto out;
+ #endif
+                 }
+             }
+@@ -636,9 +659,19 @@
+     return nsym;
+ }
+
++static uint32_t IRAM_ATTR __attribute__((noinline)) tx_a16_c(lut_io_t *io, uint8_t *qb, const int32_t *T, uint32_t S,
++                                                           sample_clock_t clock, uint32_t max_sym, uint32_t *rec) {
++    return tx_a16_clocked(io, qb, T, S, clock, max_sym, rec, 1u);
++}
++
++/* Constant two-sample clock frees enough cycles to drain USB twice per symbol at 1 MBd. */
++static uint32_t IRAM_ATTR __attribute__((noinline)) tx_a16_1m(lut_io_t *io, uint8_t *qb, const int32_t *T, uint32_t max_sym, uint32_t *rec) {
++    return tx_a16_clocked(io, qb, T, 2u, (sample_clock_t){80u, 0u, 1u}, max_sym, rec, 4u);
++}
++
+ static void tx_qpsk_lut(uint32_t fkhz, uint32_t baud_req, uint32_t sps, int32_t amp, uint32_t secs, int32_t ifm, int32_t target, int32_t dc4i, int32_t dc4q,
+                         int32_t gq, int32_t phim, bool psk8, bool a16, uint32_t gamma100) {
+-    if (a16 && baud_req > 500000u) { say("ERR A16T maximum 500000 Bd: 1 MBd needs 500 kB/s USB; measured about 423 kB/s\r\n"); return; }
++    a16_startup_under = a16_active_under = 0;
+     const uint32_t period = (CPU_HZ + baud_req * sps / 2) / (baud_req * sps);
+     const sample_clock_t clock = sample_clock_init(CPU_HZ, baud_req * sps);
+     const bool fractional = psk8 && period != 20 && sps >= LUTG_MIN_S && sps <= LUTG8_MAX_S && clock.period >= 75;
+@@ -728,7 +761,8 @@
+     wr(DAC_CTRL, 0x80000u | 1u | (1u << 31));
+     const uint32_t n = fast8 ? tx_lut8(&c8, ring, T, max_sym)
+                : p8c ? tx_p8_c(&io, ring, T, sps, clock, max_sym, rec)
+-               : a16c ? tx_a16_c(&io, ring, T, sps, clock, max_sym, rec)
++               : a16c ? (sps == 2u && baud_req == 1000000u ? tx_a16_1m(&io, ring, T, max_sym, rec)
++                                                         : tx_a16_c(&io, ring, T, sps, clock, max_sym, rec))
+                : fastg ? tx_lutg(&cg, ring, T, sps, period, max_sym, mper, rec, psk8, a16, symbol_clock, symbol_average)
+                : sps == 4 ? tx_sym_lut_4(&io, ring, (const uint8_t *)T, period, max_sym, target == 0)
+                      : sps == 8 ? tx_sym_lut_8(&io, ring, (const uint8_t *)T, period, max_sym, target == 0)
+@@ -809,8 +843,12 @@
+         say("\r\nT8 exit %lu late %lu\r\n", (unsigned long)c8.exitc, (unsigned long)c8.late);
+     }
+ #endif
+-    say("\r\nTX END symbols=%" PRIu32 " bytes_in=%" PRIu32 " underruns=%" PRIu32 " late_slots=%" PRIu32 " (lag bits 0x%" PRIx32 ") buffer=%" PRIu32 " pairs (%s)\r\n",
+-        n * sps, io.qw, io.under, io.lateness, io.lag_or, (io.qw - io.qr) / 2, io.stopped ? "stop byte" : "host silent or time over");
++    if (a16 && baud_req == 1000000u)
++        say("A16 RX startup_under=%lu active_under=%lu\r\n", (unsigned long)a16_startup_under, (unsigned long)a16_active_under);
++    say("\r\nTX END symbols=%" PRIu32 " bytes_in=%" PRIu32 " underruns=%" PRIu32 " late_slots=%" PRIu32 " (lag bits 0x%" PRIx32 ") buffer=%" PRIu32 " pairs startup_under=%lu active_under=%lu (%s)\r\n",
++        n * sps, io.qw, io.under, io.lateness, io.lag_or, (io.qw - io.qr) / 2,
++        (unsigned long)a16_startup_under, (unsigned long)a16_active_under,
++        io.stopped ? "stop byte" : "host silent or time over");
+ }
+
+
+--- a/host/tx_dvbs.py
++++ b/host/tx_dvbs.py
+@@ -21,7 +21,7 @@
+   python3 tx_dvbs.py --freq 2402.000 --baud 500000 --dvbs2 --fec 2/3 [--frame short] [--pilots]
+   python3 tx_dvbs.py --freq 2402.000 --baud 500000 --dvbs2 --mod 8psk --fec 2/3     (8PSK: 200..400 kBd clean, up to 500 kBd, code rates 3/5 .. 9/10)
+   python3 tx_dvbs.py --freq 2402.000 --baud 1000000 --dvbs2 --mod 8psk --fec 3/5    (8PSK at 1 MBd: 3 bits per symbol on the USB link, 375 kB/s)
+-  python3 tx_dvbs.py --freq 2402.000 --baud 400000 --dvbs2 --mod 16apsk --fec 2/3   (16APSK: 2..500 kBd, code rates 2/3 .. 9/10; needs an SNR of 12..16 dB at the receiver)
++  python3 tx_dvbs.py --freq 2402.000 --baud 400000 --dvbs2 --mod 16apsk --fec 2/3   (16APSK: 2..1000 kBd, code rates 2/3 .. 9/10; needs an SNR of 12..16 dB at the receiver)
+   Receiver: DVB-S2, QPSK, 8PSK or 16APSK, the same symbol rate, code rate, roll-off 0.35.
+
+ Amateur radio use only, within the limits of your licence. The firmware refuses frequencies outside 2300..2450 MHz.
+@@ -157,13 +157,13 @@
+
+
+ def auto_sps_16apsk(baud):
+-    """Use the fast 16..24-SPS assembly loop near 8 MS/s, otherwise fit the rational C clock into 4..24 SPS."""
+-    if not 2000 <= baud <= 500_000:
+-        raise SystemExit("16APSK: --baud must be 2000 .. 500000 Bd; 1 MBd needs 500 kB/s USB, measured about 423 kB/s")
++    """Use the fast 16..24-SPS assembly loop near 8 MS/s, otherwise fit the rational C clock into 2..24 SPS."""
++    if not 2000 <= baud <= 1_000_000:
++        raise SystemExit("16APSK: --baud must be 2000 .. 1000000 Bd")
+     sps = round(CPU_HZ / (20 * baud))
+     if 16 <= sps <= 24 and abs(CPU_HZ / (20 * sps) / baud - 1) <= 0.01:
+         return sps
+-    for sps in range(24, 3, -1):
++    for sps in range(24, 1, -1):
+         if CPU_HZ // (baud * sps) >= A16_MIN_PERIOD:
+             return sps
+     raise SystemExit("16APSK: no sample rate fits the firmware timing budget")
+@@ -190,7 +190,7 @@
+     period = (CPU_HZ + sample_hz // 2) // sample_hz
+     if modulation == "8psk" and period != 20 and 16 <= sps <= 64 and CPU_HZ // sample_hz >= P8_MIN_PERIOD:
+         return float(baud)
+-    if modulation == "16apsk" and period != 20 and 4 <= sps <= 24 and CPU_HZ // sample_hz >= A16_MIN_PERIOD:
++    if modulation == "16apsk" and period != 20 and 2 <= sps <= 24 and CPU_HZ // sample_hz >= A16_MIN_PERIOD:
+         return float(baud)
+     generic = (modulation == "8psk" and 16 <= sps <= 64 and period == 20) or (modulation == "qpsk" and 16 <= sps <= 232 and period in (20, 24)) or (modulation == "16apsk" and 16 <= sps <= 24 and period == 20)
+     if generic and CPU_HZ // baud == period * sps:
+@@ -226,10 +226,10 @@
+     ap.add_argument("--fec", default="1/2", help="code rate: DVB-S 1/2 2/3 3/4 5/6 7/8; with --dvbs2 1/4 1/3 2/5 1/2 3/5 2/3 3/4 4/5 5/6 8/9 9/10 (short frames: no 9/10)")
+     ap.add_argument("--dvbs2", action="store_true", help="DVB-S2 instead of DVB-S")
+     ap.add_argument("--mod", default="qpsk", choices=("qpsk", "8psk", "16apsk"),
+-                    help="DVB-S2 modulation (8PSK: code rates 3/5 2/3 3/4 5/6 8/9 9/10, 10..500 kBd and 1 MBd; 16APSK: code rates 2/3 3/4 4/5 5/6 8/9 9/10, 2..500 kBd)")
++                    help="DVB-S2 modulation (8PSK: code rates 3/5 2/3 3/4 5/6 8/9 9/10, 10..500 kBd and 1 MBd; 16APSK: code rates 2/3 3/4 4/5 5/6 8/9 9/10, 2..1000 kBd)")
+     ap.add_argument("--frame", default="normal", choices=("normal", "short"), help="DVB-S2 FECFRAME size (normal 64800 bits, short 16200)")
+     ap.add_argument("--pilots", action="store_true", help="DVB-S2 pilots (36 symbols after every 16 slots)")
+-    ap.add_argument("--sps", type=int, default=0, help="DAC samples per symbol (16APSK: 4..24; QPSK: 4/8/16 or 16..232; 8PSK: 8 or 16..64); 0 = automatic: the hand-scheduled 8 / 6.67 MS/s loops when they fit the symbol rate, else the most that keeps the output at or below 4 MS/s")
++    ap.add_argument("--sps", type=int, default=0, help="DAC samples per symbol (16APSK: 2..24; QPSK: 4/8/16 or 16..232; 8PSK: 8 or 16..64); 0 = automatic: the hand-scheduled 8 / 6.67 MS/s loops when they fit the symbol rate, else the most that keeps the output at or below 4 MS/s")
+     ap.add_argument("--ifm", type=int, default=0, help="centre = LO + ifm * baud (puts the LO leakage outside the signal)")
+     ap.add_argument("--amp", type=int, default=0, help="peak amplitude in DAC codes (1..480); 0 = 300, 8PSK 400 (same mean power as QPSK)")
+     ap.add_argument("--target", type=int, default=0, help="ESP symbol buffer fill to hold [pairs of 2 bytes] (default 3000, 6000 for 8PSK at 1 MBd: the ring holds 8192)")
+@@ -255,12 +255,10 @@
+         raise SystemExit(f"--mod {a.mod} needs --dvbs2")
+     if not a.amp:
+         a.amp = 420 if a.mod != "qpsk" else 300                        # 8PSK and 16APSK: the tables are scaled to the worst case, so more than QPSK's 300 fits; above ~430 the output compresses (skirts up, no more signal)
+-    if a.mod == "16apsk" and not 2000 <= a.baud <= 500000:
+-        auto_sps_16apsk(a.baud)     # reject unsupported rates even with an explicit --sps
+     if not a.sps:
+         a.sps = auto_sps_16apsk(a.baud) if a.mod == "16apsk" else auto_sps_8psk(a.baud) if a.mod == "8psk" else auto_sps(a.baud)
+     if not a.target:
+-        a.target = 6000 if a.mod == "8psk" and a.sps == 8 else 2500 if a.mod == "16apsk" else 3000
++        a.target = 6000 if a.mod == "8psk" and a.sps == 8 else (4000 if a.baud == 1000000 else 2500) if a.mod == "16apsk" else 3000
+     baud_act = output_baud(a.baud, a.sps, a.mod)
+     if (a.mod == "8psk" and 460000 < baud_act < 1000000) or (a.mod == "16apsk" and baud_act > 460000):
+         print(f"note: {a.mod.upper()} at {baud_act / 1e3:.0f} kBd needs {baud_act / 2e3:.0f} kB/s over the USB link to the ESP, which carries about 262 kB/s at 500 kBd and depends on the ESP's read rate: "
+@@ -297,7 +295,7 @@
+         print(f"{info}\n" + ("UNMODULATED CARRIER (--cw)\n" if a.cw else "") + f"spectrum centre {(lo_true + if_hz) / 1e6:.6f} MHz (requested {a.freq:.6f}), {baud_act:.1f} Bd, "
+               f"{std} FEC {a.fec}, RRC 0.35 occupies {baud_act * 1.35 / 1e3:.0f} kHz, TS capacity {cap / 1e3:.0f} kb/s")
+         # The USB link carries more with bigger writes (64 bytes: 360 kB/s, 2 kB: 420 kB/s, 64 kB: 430 kB/s): at 1 MBd 8PSK (375 kB/s) write in big pieces
+-        min_todo, max_chunk = (400, 2048) if a.sps == 8 and a.mod == "8psk" else (32, 1024)
++        min_todo, max_chunk = (400, 4096) if a.mod == "16apsk" and a.baud == 1000000 else (400, 2048) if a.sps == 8 and a.mod == "8psk" else (32, 1024)
+         buf = b""
+         # The encoder runs in its own thread, ahead of the USB writes: the kernel takes about one write at a time, so encoding between two writes leaves the
+         # link idle (a loop that encodes and writes alternately delivered 360 kB/s, a pre-encoded stream 420 kB/s)
+@@ -321,6 +319,8 @@
+                     except queue.Empty:
+                         break
+                 nb = min(nb, len(buf))
++                if a.mod == "16apsk" and a.baud == 1000000:
++                    nb -= nb % 64   # the packet prototype requires full USB packets
+                 if nb:
+                     link.send(buf[:nb])                                   # raw symbol bytes, no framing
+                     buf = buf[nb:]

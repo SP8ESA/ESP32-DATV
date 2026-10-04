@@ -1,0 +1,198 @@
+{
+  "started_at": "2026-10-05T01:37:45+02:00",
+  "baseline_commit": "d0dcab4c7a45bfa36de91b5c701430a87a369baf",
+  "firmware_status": "experimental four-byte USB read / full 64-byte packet prototype; not the production firmware",
+  "firmware_binary_sha256": "ac8b6d2280d5a9efaecedde1880199c9917fe608a7469013b620ff3e85b1082e",
+  "firmware_source_sha256": "b08c19b331697e198bd49e08e0cc40a0d77671d16adf8c97a13a1cc0248126f8",
+  "host_source_sha256": "9dc2a856f26f486f76c348f61c5a28abe4ff0c4473eefc0e15621ff4ebf84edd",
+  "production_binary_sha256": "41218ae5d6b83514171711e99ca288b5c4b8d45a3c0441a57f096ca4cf5c2820",
+  "frequency_mhz": 2370,
+  "modulation": "16apsk",
+  "standard": "DVB-S2",
+  "requested_baud": 1000000,
+  "fec": "2/3",
+  "frame": "normal",
+  "pilots": true,
+  "rrc_rolloff": 0.35,
+  "source": "scrambled null TS packets",
+  "amp": 300,
+  "ppm": 12,
+  "command": [
+    "/usr/bin/python3",
+    "-u",
+    "-B",
+    "/home/sp8esa/Pulpit/esp32/tinysa_pomiary/usb_16apsk_1m_20261005/tx_packet_prototype.py",
+    "--freq",
+    "2370.000",
+    "--baud",
+    "1000000",
+    "--dvbs2",
+    "--mod",
+    "16apsk",
+    "--fec",
+    "2/3",
+    "--frame",
+    "normal",
+    "--pilots",
+    "--null",
+    "--amp",
+    "300",
+    "--ppm",
+    "12",
+    "--target",
+    "4000",
+    "--port",
+    "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00"
+  ],
+  "analyzer_internal_attenuation_db": 10,
+  "passes": 3,
+  "smoothing_bins": 3,
+  "normalization": "each panel relative to its smoothed central signal top",
+  "limitations": [
+    "Prototype requires full 64-byte USB OUT packets and aligned host writes.",
+    "Production firmware still limits 16APSK to 500 kS/s.",
+    "Active underruns are sampled at maintenance points while USB input advances; startup and silent shutdown are excluded."
+  ],
+  "instrument": "version\r\ntinySA4_v1.4-217-gc5dd31f\r\nHW Version:V0.4.6 \r\nch> ",
+  "instrument_previous_attenuation": "attenuate\r\nusage: attenuate 0..31|auto\r\n  10\r\nch> ",
+  "instrument_previous_calculation": "calc\r\nusage: calc [{trace#}] off|minh|maxh|maxd|aver4|aver16|aver|quasi|log|lin\r\nOFF\r\nch> ",
+  "instrument_calculation": "calc off\r\nch> ",
+  "attenuation_response": "attenuate 10\r\nch> ",
+  "acknowledgement": "OK QPSKT LO 2369971619 BAUD 1000000.000 OUT 2000000 AMP 300 SPS 2 PERIOD 80 IF 0 TARGET 4000 MOD 16APSK REM 0 DIV 2000000 SREM 0 SDIV 1",
+  "actual_baud": 1000000.0,
+  "dac_hz": 2000000.0,
+  "sps": 2,
+  "period": 80,
+  "wide": {
+    "rbw_khz": 30,
+    "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+    "passes": 3,
+    "segments_per_pass": 3,
+    "points": 1348,
+    "max_step_hz": 22272.0,
+    "centroid_alignment": false,
+    "reference_hz": 2369993832.321571,
+    "centroid_drift_hz": 15107.018880367279,
+    "signal_top_dbm": -11.804456347797132,
+    "raw_file": "16apsk_1MBd_wide.npz",
+    "duration_seconds": 13.03
+  },
+  "zoom": {
+    "rbw_khz": 10,
+    "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n10kHz\r\nch> ",
+    "passes": 3,
+    "segments_per_pass": 2,
+    "points": 899,
+    "max_step_hz": 6682.0,
+    "centroid_alignment": true,
+    "reference_hz": 2370008270.515859,
+    "centroid_drift_hz": 7973.934648513794,
+    "signal_top_dbm": -16.297339749780505,
+    "raw_file": "16apsk_1MBd_zoom.npz",
+    "duration_seconds": 14.23
+  },
+  "tx_summary": "TX END symbols=59703310 bytes_in=14635264 underruns=581128 late_slots=0 (lag bits 0x0) buffer=0 pairs startup_under=91335 active_under=0 (host silent or time over)",
+  "buffer_reports": [
+    [
+      0,
+      3641
+    ],
+    [
+      2865,
+      3697
+    ],
+    [
+      2929,
+      3633
+    ],
+    [
+      2609,
+      3665
+    ],
+    [
+      2961,
+      3665
+    ],
+    [
+      2961,
+      3633
+    ],
+    [
+      1809,
+      3669
+    ],
+    [
+      2673,
+      3695
+    ],
+    [
+      2865,
+      3665
+    ],
+    [
+      2577,
+      3665
+    ],
+    [
+      2961,
+      3665
+    ],
+    [
+      2929,
+      3633
+    ],
+    [
+      2545,
+      3665
+    ],
+    [
+      2961,
+      3665
+    ]
+  ],
+  "tx_stats": {
+    "symbols": 59703310,
+    "bytes_in": 14635264,
+    "underruns": 581128,
+    "late_slots": 0,
+    "buffer": 0,
+    "startup_under": 91335,
+    "active_under": 0
+  },
+  "figure": "spectrum_16APSK_1MBd.png",
+  "csv_files": [
+    "16apsk_1MBd_wide.csv",
+    "16apsk_1MBd_zoom.csv"
+  ],
+  "aliases": [
+    {
+      "frequency_offset_mhz": -1.556154515859127,
+      "level_db": -13.388550075453878,
+      "search_centre_offset_mhz": -2.0,
+      "search_half_width_mhz": 0.9
+    },
+    {
+      "frequency_offset_mhz": 1.561885484140873,
+      "level_db": -13.889407405911076,
+      "search_centre_offset_mhz": 2.0,
+      "search_half_width_mhz": 0.9
+    }
+  ],
+  "reference_hz": 2370008270.515859,
+  "alias_level_definition": "smoothed image peak relative to smoothed main-channel peak in the 30 kHz RBW wide scan; not integrated power",
+  "completed_at": "2026-10-05T01:38:23+02:00",
+  "prototype_patch": {
+    "file": "16apsk_1MBd_prototype.patch",
+    "sha256": "fba7875629b14cef1f25dd987599384b8cec3f2a32cf2065b3b6d87c72f729ba",
+    "applies_to_commit": "d0dcab4c7a45bfa36de91b5c701430a87a369baf",
+    "host_path_note": "The measured host used an absolute HERE path to import production modules. The patch restores the normal relative HERE path for portability; USB and modulation code are unchanged."
+  },
+  "tx_log": "tx_16apsk_1MBd.log",
+  "raw_file_sha256": {
+    "16apsk_1MBd_wide.csv": "de4fa150661be3d2a0d94716e7f671791bc8c8e0a9791fc18fe9b147220d6958",
+    "16apsk_1MBd_zoom.csv": "0fad2cc1c4dadc77e0a235aa43a9632c7bd15a0a783739d6261116c75c7a46e1",
+    "16apsk_1MBd_wide.npz": "7d55820ba310e4f735c16b0275b58dbaae829ae7eb0d94ba4393a1a85619b7e8",
+    "16apsk_1MBd_zoom.npz": "81fd85a375cfc0c08129b6f55b831fae0c3e04a48dbdeff4b60a0e62d6ab11a5",
+    "tx_16apsk_1MBd.log": "64fa9cc07a0e56a60856c3b5cf1aa86fc0b9b4a4224e9a0d9eab3526bfb50f0a"
+  }
+}
