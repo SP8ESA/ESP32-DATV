@@ -4,15 +4,13 @@
 
 **A DVB-S and DVB-S2 digital amateur TV transmitter in a bare ESP32-C3: QPSK from 1 Msymbol/s down to 33 ksymbol/s (DVB-S2 also 8PSK, about 10 to 500 ksymbol/s and 1 Msymbol/s, and 16APSK, about 2 to 500 ksymbol/s) in the 13 cm band, no RF hardware added.**
 
-![Spectrum of the transmitted DVB-S signal](docs/spectrum.png)
+![Measured QPSK spectrum at 1 MS/s](docs/spectrum_1MBd.png)
 
-*The 1 MBd DVB-S signal around 2402 MHz, seen in SDR++ on a HackRF One (the author's screenshot, taken with the earlier
-4 MS/s output). The faint humps a few MHz to the right are the images of that 4 MS/s zero-order-hold output. The firmware now
-updates the DAC at 8 MS/s (6.67 MS/s for the lowest rates): the images moved from +-4 MHz out to +-8 MHz and the strongest
-one is about 6 dB lower, and much lower still at the narrower symbol rates (see [Spectra](#spectra)).*
+*The current 1 MBd DVB-S output measured with a tinySA Ultra+ at 2370 MHz. The first DAC images are near +-8 MHz.
+The complete QO-100 symbol-rate series, including narrowband 8PSK and 16APSK, is in [Spectra](#spectra).*
 
 The ESP32-C3's Wi-Fi transmitter has an I/Q modulator and a 10-bit I/Q DAC feeding it. This project drives that DAC directly
-from the CPU at 8 mega-samples per second (6.67 MS/s for the two lowest symbol rates), so the chip itself produces a
+from the CPU at up to 8 mega-samples per second (the DAC rate depends on modulation and symbol rate), so the chip itself produces a
 root-raised-cosine QPSK (or, for DVB-S2, 8PSK or 16APSK) signal on 2.4 GHz. A PC
 encodes an MPEG transport stream to DVB-S (energy dispersal, Reed-Solomon, interleaver, convolutional code) or to DVB-S2 QPSK, 8PSK or 16APSK (BBFRAME,
 BCH, LDPC, physical layer framing, optional pilots) and streams the symbols over USB; the ESP does the pulse shaping and the output.
@@ -35,11 +33,12 @@ The demo film in `media/` plays on a normal DVB-S receiver.
 | `host/dvbs2_vs_gnuradio.py` | Compares the DVB-S2 encoder with GNU Radio's gr-dtv stage by stage (development only) |
 | `host/tx_dvbs.py` | The transmitter script: transport stream source (demo film, any video, test pattern, stdin) or an unmodulated carrier, DVB-S or DVB-S2 encoder, USB streaming |
 | `host/tx_qpsk_test.py` | Random-symbol QPSK test for looking at the spectrum |
+| `host/measure_spectra.py` | Conducted tinySA Ultra+ measurements of the QO-100 symbol-rate set; three power-averaged sweeps by default, raw data and automatic restoration of live TX (also needs matplotlib) |
 | `host/esp_link.py` | USB link to the firmware |
 | `host/test_lut.c` | Checks the firmware's lookup tables against a direct floating-point RRC filter, on the PC |
 | `host/test_lutg_words.c`, `host/lutg_record.py` | Check the DAC words the generic assembly loop really produces against the reference model (recording build) |
 | `host/cal.json` | Example DC / I-Q trim (measured on the author's board) |
-| `docs/` | Pictures for this README, including the measured spectra of all symbol rates |
+| `docs/` | Figures for this README; `docs/spectra/` contains the current raw sweeps, averaged CSVs and measurement settings |
 | `media/` | The demo film (Sintel trailer, CC BY 3.0) |
 
 ## Quick start
@@ -141,7 +140,7 @@ the symbol rate; pilots lower it by 2.2-2.4 %):
 | 9/10 | 1789 kb/s | - |
 
 **8PSK** (`--mod 8psk`): code rates 3/5, 2/3, 3/4, 5/6, 8/9 and 9/10 (short frames: no 9/10), symbol rates 125 to 500 kBd (8 MS/s with 16 to 64
-samples per symbol; `--baud 500000`, `400000`, `333000`, `250000`, `200000`, `125000` are the usual ones) and 1 MBd (8 samples per symbol, its own loop).
+samples per symbol; supported examples include `--baud 500000`, `400000`, `333000`, `250000`, `200000`, `125000`) and 1 MBd (8 samples per symbol, its own loop).
 Lower rates, down to about 10 kBd, use a C loop with a slower DAC so that the RRC tables fit in RAM. A remainder accumulator alternates the two adjacent
 integer cycle intervals, giving the requested average symbol rate with less than one CPU cycle of accumulated deadline error. At 33 kBd the intervals
 are 75/76 cycles (average 75.757575...); CPU and USB clocks stay at their standard settings. Rates assume a nominal 160 MHz CPU and retain the crystal's
@@ -164,8 +163,8 @@ was also confirmed at 66 kBd and 1 MBd. The spectrum measurements below cover 8P
 | 66 000 Bd | 32 | 75/76 | 2.112 MS/s | 66 000 Bd average |
 | 33 000 Bd | 64 | 75/76 | 2.112 MS/s | 33 000 Bd average |
 
-The 33/66 kBd spectrum plots below were recorded with the earlier integer timing (32 895/66 116 Bd, 64/44 samples per symbol);
-their raw measurements and DAC image offsets describe that firmware version.
+The spectrum plots below use the current fractional timing. Their raw data and metadata record the firmware version,
+the requested mean symbol rate, the samples per symbol and the mean DAC rate.
 
 Useful transport stream rate at 400 kBd, no pilots (multiply by 2.5 for 1 MBd: 3/5 1780 kb/s, 2/3 1981, 3/4 2228, 5/6 2479, 8/9 2646, 9/10 2679 kb/s in normal frames):
 
@@ -368,23 +367,9 @@ Everything below is on one board (ESP32-C3 rev 0.4, 40 MHz crystal), with a Hack
   baseband (RRC 0.35, 24 dB Es/N0, 4 samples per symbol), normal frames at every code rate and short frames at 2/3, 3/4 and 8/9: every transport stream packet it returned
   was exact. (3) The loop on the chip: the DAC words match the reference model (S = 16, 20, 24, 0 mismatches). (4) Over the air, through a cable and an attenuator into
   SDRangel's DVB-S2 demodulator: the author decoded 16APSK 2/3 at 400 kBd (normal frames, no pilots).
-* All symbol rates, tinySA Ultra+ with the transmitter connected through an attenuator, 30 passes averaged in power, 2370 MHz.
-  The strongest image of the zero-order-hold DAC output sits at +-f(DAC) (8 MHz, 6.67 MHz for 66 and 33 kBd). Level in one 30 kHz
-  bin relative to the same bin at the top of the signal, both sides:
-
-  | symbol rate | DAC rate | image at +-f(DAC) |
-  |---|---|---|
-  | 1 MBd | 8 MS/s | -27 dB (the 4 MS/s output it replaced: -21 dB at +-4 MHz) |
-  | 500 kBd | 8 MS/s | -34 dB |
-  | 333 kBd (outdated measurement) | 8 MS/s | -37 dB |
-  | 250 kBd | 8 MS/s | -41 dB |
-  | 125 kBd | 8 MS/s | -49 dB |
-  | 66 kBd (outdated measurement) | 6.67 MS/s | -52 dB |
-  | 33 kBd (outdated measurement) | 6.67 MS/s | -59 dB (near the measurement floor) |
-
-  The image carries the same power at every rate, but it is as wide as the signal, so it sinks below a fixed RBW bin as the signal
-  gets narrower. The spectra themselves are in [Spectra](#spectra). The 333, 66 and 33 kBd measurements predate fractional
-  symbol timing and no longer describe the current firmware; these measurements will be repeated.
+* Conducted tinySA Ultra+ spectra of the QO-100 rates, at 2370 MHz, with three sweeps averaged in power.
+  The first zero-order-hold DAC images appear near +-f(DAC). Their offsets change with the DAC rate, particularly in narrowband
+  8PSK and 16APSK. The current figures, image levels and raw measurement files are in [Spectra](#spectra).
 * The timing of the generic loop: the DAC stores are exactly 20 or 24 CPU cycles apart in all slots of a symbol (a recording build
   stamps the cycle counter after every store), apart from the 1-3 slots per symbol that read or write the USB registers, which
   vary by a cycle with the state of the USB FIFO; the sync sled makes up for it, so the symbol rate stays exact. `late_slots` was 0
@@ -394,120 +379,136 @@ Everything below is on one board (ESP32-C3 rev 0.4, 40 MHz crystal), with a Hack
 
 ## Spectra
 
-Conducted measurements with a tinySA Ultra+ (transmitter - attenuator - analyzer), DVB-S, FEC 1/2, centre 2370 MHz, 30 passes
-averaged in power and lightly smoothed (5 bins). Levels are in dB relative to the top of the signal, the scan step is never
-larger than the RBW. Left: 30 MHz span at RBW 30 kHz, with the images of the DAC output marked "alias". Right: a span of about six
-symbol rates. "MS/s" and "kS/s" in the titles are the DVB-S symbol rate, not the DAC rate (8 MS/s, except 6.67 MS/s at 66 and 33 kBd).
-The shoulder about 33-40 dB down next to the signal edge is the RRC filter truncated to 8 symbols; further out the skirt is the noise
-of the carrier itself.
+The current series was measured on 2026-10-05 with firmware `357c593`, using the symbol rates listed in the
+[QO-100 WB bandplan](https://wiki.batc.org.uk/QO-100_WB_Bandplan) that this transmitter supports:
+**33, 66, 125, 250, 333, 500 and 1000 kBd**. There are 20 plots: seven each for QPSK and 8PSK, and six for 16APSK;
+1 MBd 16APSK exceeds the current USB throughput. The old 200/400 kBd plots have been removed.
 
-### 1 MBd (8 samples per symbol, `lut8.S`): alias -27 dB
+Conducted setup: ESP32-C3 - attenuator - tinySA Ultra+, centre 2370 MHz, 10 dB internal analyzer attenuation,
+`--amp 300`, calibrated I/Q settings and `--ppm 12`. QPSK uses DVB-S 1/2; 8PSK uses DVB-S2 3/5 and 16APSK uses DVB-S2 2/3,
+normal frames without pilots. The source is scrambled null transport packets. The fixed amplitude makes the modulation comparisons
+repeatable; normal video transmission defaults to a higher amplitude for 8PSK and 16APSK.
 
-![QPSK 1 MS/s](docs/spectrum_1MBd.png)
+Each panel averages **three sweeps in linear power**, followed by only **three-bin power smoothing** for display, instead of the previous
+30 sweeps / five bins. Each panel is normalized to its own smoothed central signal top; this is a relative spectral measurement,
+not an integrated channel power measurement. Left: 30 MHz span, RBW 30 kHz, with the first DAC images marked. Right: six symbol rates
+of span, RBW 10 kHz at 1 MBd, 500 and 333 kBd; 3 kHz at 250 and 125 kBd; 1 kHz at 66 and 33 kBd. Scan steps are no larger than RBW.
+Zoom sweeps are aligned by the signal centroid before averaging so frequency drift does not blur the narrow channels.
 
-### 500 kBd (16 samples per symbol): alias -34 dB
+At 333 kBd the plots now include fractional symbol timing and mean DAC rate 7.992 MS/s. At 33/66 kBd, QPSK uses mean DAC rate
+6.666 MS/s, 8PSK uses 2.112 MS/s, and 16APSK uses 0.792/1.584 MS/s. Symbol rates assume a nominal 160 MHz CPU clock;
+the crystal error remains. These new measurements replace the previous spectrum series, including the obsolete integer-timing plots.
 
-![QPSK 500 kS/s](docs/spectrum_500kBd.png)
+The table lists the **stronger first image near +-f(DAC)**, in a 30 kHz bin relative to the central signal top;
+the figures mark the two sides separately. Values marked `*` are less than 6 dB above the measured floor and should be treated as
+floor-limited estimates. Three sweeps leave some trace variation; small differences of a few dB are not precision comparisons.
 
-### 333 kBd (historical integer timing: 24 samples per symbol, 333 333 Bd): alias -37 dB
+| Symbol rate | QPSK: DAC / first image | 8PSK: DAC / first image | 16APSK: DAC / first image |
+|---|---|---|---|
+| 1 MBd | 8 MS/s / -27 dB | 8 MS/s / -27 dB | USB throughput limit |
+| 500 kBd | 8 MS/s / -34 dB | 8 MS/s / -33 dB | 8 MS/s / -33 dB |
+| 333 kBd | 7.992 MS/s / -38 dB | 7.992 MS/s / -38 dB | 7.992 MS/s / -38 dB |
+| 250 kBd | 8 MS/s / -41 dB | 8 MS/s / -40 dB | 2 MS/s / -28 dB |
+| 125 kBd | 8 MS/s / -46 dB | 8 MS/s / -46 dB | 2 MS/s / -36 dB |
+| 66 kBd | 6.666 MS/s / -51 dB | 2.112 MS/s / -43 dB | 1.584 MS/s / -40 dB |
+| 33 kBd | 6.666 MS/s / -58 dB | 2.112 MS/s / -46 dB | 0.792 MS/s / -39 dB |
 
-> **Outdated measurement.** The transmitter now averages the symbol duration using fractional CPU cycles, giving 333 000 Bd
-> and a mean DAC rate of 7.992 MS/s. This spectrum was measured with the previous integer timing. The measurements will be repeated.
+Raw individual sweeps (NPZ), unsmoothed power-averaged traces (CSV, absolute dBm and relative dB), exact TX acknowledgements,
+TX timing summaries and analyzer settings are in [docs/spectra/measurement.json](docs/spectra/measurement.json) and its companion files.
+For a repeat run, install matplotlib in addition to the host requirements and use
+`python3 -B host/measure_spectra.py --output /tmp/qo100-spectra --passes 3` while live TX is running.
+The script validates and stops the saved live TX process, measures this set, then restores the previous video command even on interruption.
 
-![QPSK 333 kS/s](docs/spectrum_333kBd.png)
+During the sweeps, buffer reports after startup stayed above zero. The slow C loops count a sample deadline check as late
+when it is more than eight CPU cycles (50 ns) past the deadline. 8PSK 66 kBd: 14,700 late checks / 86,507,488 DAC samples (0.0170%);
+8PSK 33 kBd: 5,115 late checks / 60,161,984 DAC samples (0.0085%). All other modes reported `late_slots=0`.
+These spectra include the recorded timing variation; startup and the host-silence tail contribute to the final underrun totals.
 
-### 250 kBd (32 samples per symbol): alias -41 dB
+### DVB-S QPSK
 
-![QPSK 250 kS/s](docs/spectrum_250kBd.png)
+#### 1 MBd — 8 samples per symbol, mean DAC 8 MS/s
 
-### 125 kBd (64 samples per symbol): alias -49 dB
+![QPSK 1 MBd measured spectrum](docs/spectrum_1MBd.png)
 
-![QPSK 125 kS/s](docs/spectrum_125kBd.png)
+#### 500 kBd — 16 samples per symbol, mean DAC 8 MS/s
 
-### 66 kBd (historical integer timing: 101 samples per symbol at 24 cycles, 66 007 Bd): alias -52 dB at +-6.67 MHz
+![QPSK 500 kBd measured spectrum](docs/spectrum_500kBd.png)
 
-> **Outdated measurement.** The transmitter now averages the symbol duration using fractional CPU cycles, giving 66 000 Bd
-> and a mean DAC rate of 6.666 MS/s. This spectrum was measured with the previous integer timing. The measurements will be repeated.
+#### 333 kBd — 24 samples per symbol, mean DAC 7.992 MS/s
 
-![QPSK 66 kS/s](docs/spectrum_66kBd.png)
+![QPSK 333 kBd measured spectrum](docs/spectrum_333kBd.png)
 
-### 33 kBd (historical integer timing: 202 samples per symbol at 24 cycles, 33 003 Bd): alias -59 dB at +-6.67 MHz
+#### 250 kBd — 32 samples per symbol, mean DAC 8 MS/s
 
-> **Outdated measurement.** The transmitter now averages the symbol duration using fractional CPU cycles, giving 33 000 Bd
-> and a mean DAC rate of 6.666 MS/s. This spectrum was measured with the previous integer timing. The measurements will be repeated.
+![QPSK 250 kBd measured spectrum](docs/spectrum_250kBd.png)
 
-![QPSK 33 kS/s](docs/spectrum_33kBd.png)
+#### 125 kBd — 64 samples per symbol, mean DAC 8 MS/s
+
+![QPSK 125 kBd measured spectrum](docs/spectrum_125kBd.png)
+
+#### 66 kBd — 101 samples per symbol, mean DAC 6.666 MS/s
+
+![QPSK 66 kBd measured spectrum](docs/spectrum_66kBd.png)
+
+#### 33 kBd — 202 samples per symbol, mean DAC 6.666 MS/s
+
+![QPSK 33 kBd measured spectrum](docs/spectrum_33kBd.png)
 
 ### DVB-S2 8PSK
 
-The same measurement for DVB-S2 8PSK (FEC 3/5, `--amp 300`, null packets only, which the scrambler and the LDPC code turn into the same kind of random symbols):
-tinySA Ultra+ through an attenuator, centre 2370 MHz, 30 passes averaged in power, 30 MHz span at RBW 30 kHz and a zoom of about six symbol rates (RBW 10 kHz,
-3 kHz at 250, 200 and 125 kBd, 1 kHz at 66 and 33 kBd), every panel relative to its own top. The aliases are the zero-order-hold images of the DAC:
+#### 1 MBd — 8 samples per symbol, mean DAC 8 MS/s
 
-The historical measurements below used a slower DAC below 125 kBd so that the 8PSK RRC tables fit in RAM: 2.909 MS/s at 66 kBd and
-2.105 MS/s at 33 kBd. The current firmware averages fractional sample intervals and uses 2.112 MS/s at both rates; the 33/66 kBd
-spectra are outdated and the measurements will be repeated. The aliases appear at multiples of the DAC update rate.
-The narrowband zoom sweeps are aligned by their signal centroid before power averaging. The QPSK alias levels at 66 and 33 kBd were measured with its 6.67 MS/s DAC.
-The 2026-10-04 narrowband measurements used firmware `ba3e266`, normal frames, and 10 dB internal analyzer attenuation. The stronger of the first two aliases is listed below;
-the plots mark both separately. Firmware reported `late_slots=0` at 125 kBd, about 5.7% of DAC slots at 66 kBd, and 0.0023% at 33 kBd. The C loop counts a slot as late when its
-deadline check is more than eight CPU cycles (50 ns) past the scheduled time. These spectra include that timing variation.
+![8PSK 1 MBd measured spectrum](docs/spectrum_8PSK_1MBd.png)
 
-| symbol rate | 8PSK DAC update rate | 8PSK alias | QPSK alias |
-|---|---|---|---|
-| 1 MBd | 8 MS/s | -28 dB | -27 dB |
-| 500 kBd | 8 MS/s | -34 dB | -34 dB |
-| 400 kBd | 8 MS/s | -36 dB | - |
-| 333 kBd (outdated measurement) | 8 MS/s | -38 dB | -37 dB |
-| 250 kBd | 8 MS/s | -41 dB | -41 dB |
-| 200 kBd | 8 MS/s | -43 dB | - |
-| 125 kBd | 8 MS/s | -48 dB | -49 dB |
-| 66 kBd (outdated measurement) | 2.909 MS/s | -45 dB | -52 dB |
-| 33 kBd (outdated measurement) | 2.105 MS/s | -48 dB | -59 dB |
+#### 500 kBd — 16 samples per symbol, mean DAC 8 MS/s
 
-### 8PSK, 1 MBd (8 samples per symbol, `lutg_p8s8.S`): alias -28 dB
+![8PSK 500 kBd measured spectrum](docs/spectrum_8PSK_500kBd.png)
 
-![8PSK 1 MS/s](docs/spectrum_8PSK_1MBd.png)
+#### 333 kBd — 24 samples per symbol, mean DAC 7.992 MS/s
 
-### 8PSK, 500 kBd (16 samples per symbol): alias -34 dB
+![8PSK 333 kBd measured spectrum](docs/spectrum_8PSK_333kBd.png)
 
-![8PSK 500 kS/s](docs/spectrum_8PSK_500kBd.png)
+#### 250 kBd — 32 samples per symbol, mean DAC 8 MS/s
 
-### 8PSK, 400 kBd (20 samples per symbol): alias -36 dB
+![8PSK 250 kBd measured spectrum](docs/spectrum_8PSK_250kBd.png)
 
-![8PSK 400 kS/s](docs/spectrum_8PSK_400kBd.png)
+#### 125 kBd — 64 samples per symbol, mean DAC 8 MS/s
 
-### 8PSK, 333 kBd (historical integer timing: 24 samples per symbol, 333 333 Bd): alias -38 dB
+![8PSK 125 kBd measured spectrum](docs/spectrum_8PSK_125kBd.png)
 
-> **Outdated measurement.** The transmitter now averages the symbol duration using fractional CPU cycles, giving 333 000 Bd
-> and a mean DAC rate of 7.992 MS/s. This spectrum was measured with the previous integer timing. The measurements will be repeated.
+#### 66 kBd — 32 samples per symbol, mean DAC 2.112 MS/s
 
-![8PSK 333 kS/s](docs/spectrum_8PSK_333kBd.png)
+![8PSK 66 kBd measured spectrum](docs/spectrum_8PSK_66kBd.png)
 
-### 8PSK, 250 kBd (32 samples per symbol): alias -41 dB
+#### 33 kBd — 64 samples per symbol, mean DAC 2.112 MS/s
 
-![8PSK 250 kS/s](docs/spectrum_8PSK_250kBd.png)
+![8PSK 33 kBd measured spectrum](docs/spectrum_8PSK_33kBd.png)
 
-### 8PSK, 200 kBd (40 samples per symbol): alias -43 dB
+### DVB-S2 16APSK
 
-![8PSK 200 kS/s](docs/spectrum_8PSK_200kBd.png)
+#### 500 kBd — 16 samples per symbol, mean DAC 8 MS/s
 
-### 8PSK, 125 kBd (64 samples per symbol): aliases -49 / -48 dB at +-8 MHz
+![16APSK 500 kBd measured spectrum](docs/spectrum_16APSK_500kBd.png)
 
-![8PSK 125 kS/s](docs/spectrum_8PSK_125kBd.png)
+#### 333 kBd — 24 samples per symbol, mean DAC 7.992 MS/s
 
-### 8PSK, 66 kBd (historical integer timing: 44 samples per symbol at 55 cycles, 66 116 Bd): alias -45 dB at +-2.909 MHz
+![16APSK 333 kBd measured spectrum](docs/spectrum_16APSK_333kBd.png)
 
-> **Outdated measurement.** The transmitter now averages DAC sample intervals using 75/76 CPU cycles, giving 66 000 Bd with
-> 32 samples per symbol and a mean DAC rate of 2.112 MS/s. The timing method has changed. The measurements will be repeated.
+#### 250 kBd — 8 samples per symbol, mean DAC 2 MS/s
 
-![8PSK 66 kS/s](docs/spectrum_8PSK_66kBd.png)
+![16APSK 250 kBd measured spectrum](docs/spectrum_16APSK_250kBd.png)
 
-### 8PSK, 33 kBd (historical integer timing: 64 samples per symbol at 76 cycles, 32 895 Bd): alias -48 dB at +-2.105 MHz
+#### 125 kBd — 16 samples per symbol, mean DAC 2 MS/s
 
-> **Outdated measurement.** The transmitter now averages DAC sample intervals using 75/76 CPU cycles, giving 33 000 Bd with
-> 64 samples per symbol and a mean DAC rate of 2.112 MS/s. The timing method has changed. The measurements will be repeated.
+![16APSK 125 kBd measured spectrum](docs/spectrum_16APSK_125kBd.png)
 
-![8PSK 33 kS/s](docs/spectrum_8PSK_33kBd.png)
+#### 66 kBd — 24 samples per symbol, mean DAC 1.584 MS/s
+
+![16APSK 66 kBd measured spectrum](docs/spectrum_16APSK_66kBd.png)
+
+#### 33 kBd — 24 samples per symbol, mean DAC 0.792 MS/s
+
+![16APSK 33 kBd measured spectrum](docs/spectrum_16APSK_33kBd.png)
 
 ### Amplitude
 
@@ -535,9 +536,9 @@ therefore `--amp 420`. (The shoulder of 16APSK next to the signal is higher than
   250, 125, 66 and 33 kBd** at 8 / 6.67 MS/s, FEC 1/2 (other FEC rates bit-exact in simulation); the host scripts on Linux. The 1 MBd
   loop needs the USB stream (no on-chip PRBS there) and so do the generic 8 / 6.67 MS/s loops; other symbol rates use the C loops at
   up to 4 MS/s (not re-tested after the new loops were added, they are unchanged).
-* **The output is not a clean transmitter.** There is no filter and no amplifier: zero-order-hold images remain at +-8 MHz
-  (+-6.67 MHz at 66 and 33 kBd), 27 dB (1 MBd) to 59 dB (33 kBd) below the signal in a 30 kHz bin, and the carrier's own noise forms
-  a skirt about 35-40 dB below the signal level per bin. Add a band-pass filter and/or attenuation as your licence and
+* **The output is not a clean transmitter.** There is no filter and no amplifier: zero-order-hold images remain at multiples of
+  the DAC rate (which depends on modulation and symbol rate), and the carrier's own noise forms a skirt around the signal.
+  See the current [spectra and image levels](#spectra). Add a band-pass filter and/or attenuation as your licence and
   local rules require.
 * DVB-S2: QPSK, 8PSK and 16APSK only (no 32APSK), 8PSK at about 10 to 500 kBd and 1 MBd (below 125 kBd the DAC is slower), 16APSK at about 2 to 500 kBd (slower DAC below 333 kBd; 1 MBd exceeds the measured USB throughput), constant coding and modulation (one MODCOD for the whole stream, no ACM), one transport stream, roll-off 0.35
   (the filter in the ESP), no input stream synchronisation (ISSY) or null packet deletion, no dummy PLFRAMEs (the stream is always

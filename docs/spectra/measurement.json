@@ -1,0 +1,2868 @@
+{
+  "started_at": "2026-10-05T00:18:36+02:00",
+  "firmware_commit": "357c593b0eeef617b89c8e92e2073a10ae9fdcfc",
+  "frequency_mhz": 2370,
+  "symbol_rates_baud": [
+    1000000,
+    500000,
+    333000,
+    250000,
+    125000,
+    66000,
+    33000
+  ],
+  "modulations": [
+    "qpsk",
+    "8psk",
+    "16apsk"
+  ],
+  "source": "scrambled null TS packets",
+  "amp": 300,
+  "ppm": 12,
+  "analyzer_internal_attenuation_db": 10,
+  "passes": 3,
+  "smoothing_bins": 3,
+  "normalization": "each panel relative to its smoothed central signal top",
+  "bandplan": "https://wiki.batc.org.uk/QO-100_WB_Bandplan",
+  "rates": [
+    {
+      "figure": "spectrum_1MBd.png",
+      "csv_files": [
+        "qpsk_1MBd_wide.csv",
+        "qpsk_1MBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -7.505809716680527,
+          "level_db": -27.347431514924963,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 7.527598283319473,
+          "level_db": -27.36835197143708,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -56.93892645881909,
+      "reference_hz": 2369989105.7166805,
+      "modulation": "qpsk",
+      "standard": "DVB-S",
+      "fec": "1/2",
+      "frame": null,
+      "requested_baud": 1000000,
+      "actual_baud": 1000000.0,
+      "dac_hz": 8000000.0,
+      "sps": 8,
+      "period": 20,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "1000000",
+        "--mod",
+        "qpsk",
+        "--fec",
+        "1/2",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 1000000.000 OUT 8000000 AMP 300 SPS 8 PERIOD 20 IF 0 TARGET 3000 MOD QPSK REM 0 DIV 1 SREM 0 SDIV 1",
+      "tx_summary": "TX END symbols=238649344 bytes_in=7336840 underruns=60476 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          341,
+          2904
+        ],
+        [
+          2488,
+          2810
+        ],
+        [
+          2680,
+          2840
+        ],
+        [
+          2520,
+          2894
+        ],
+        [
+          2424,
+          2885
+        ],
+        [
+          2488,
+          2972
+        ],
+        [
+          2488,
+          2843
+        ],
+        [
+          2488,
+          2903
+        ],
+        [
+          2488,
+          2936
+        ],
+        [
+          2648,
+          2840
+        ],
+        [
+          2712,
+          2784
+        ],
+        [
+          2488,
+          2956
+        ],
+        [
+          2584,
+          2894
+        ],
+        [
+          2488,
+          2872
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2369996287.467752,
+        "centroid_drift_hz": 14728.028450012207,
+        "signal_top_dbm": -10.26313710082384,
+        "raw_file": "qpsk_1MBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 10,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n10kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 2,
+        "points": 899,
+        "max_step_hz": 6682.0,
+        "centroid_alignment": true,
+        "reference_hz": 2369989105.7166805,
+        "centroid_drift_hz": 9990.45334815979,
+        "signal_top_dbm": -14.627380235104045,
+        "raw_file": "qpsk_1MBd_zoom.npz",
+        "duration_seconds": 14.23
+      }
+    },
+    {
+      "figure": "spectrum_500kBd.png",
+      "csv_files": [
+        "qpsk_500kBd_wide.csv",
+        "qpsk_500kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -8.200714854428767,
+          "level_db": -34.74214123710461,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 7.790376145571232,
+          "level_db": -34.094403495662526,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -60.77494032569976,
+      "reference_hz": 2369993587.854429,
+      "modulation": "qpsk",
+      "standard": "DVB-S",
+      "fec": "1/2",
+      "frame": null,
+      "requested_baud": 500000,
+      "actual_baud": 500000.0,
+      "dac_hz": 8000000.0,
+      "sps": 16,
+      "period": 20,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "500000",
+        "--mod",
+        "qpsk",
+        "--fec",
+        "1/2",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 500000.000 OUT 8000000 AMP 300 SPS 16 PERIOD 20 IF 0 TARGET 3000 MOD QPSK REM 0 DIV 1 SREM 0 SDIV 500000",
+      "tx_summary": "TX END symbols=185574432 bytes_in=2841352 underruns=232995 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          0,
+          3012
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2369988637.0588255,
+        "centroid_drift_hz": 16148.229985237122,
+        "signal_top_dbm": -6.515326602698512,
+        "raw_file": "qpsk_500kBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 10,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n10kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 1,
+        "points": 450,
+        "max_step_hz": 6682.0,
+        "centroid_alignment": true,
+        "reference_hz": 2369993587.854429,
+        "centroid_drift_hz": 10748.616315841675,
+        "signal_top_dbm": -11.609493612727398,
+        "raw_file": "qpsk_500kBd_zoom.npz",
+        "duration_seconds": 7.61
+      }
+    },
+    {
+      "figure": "spectrum_333kBd.png",
+      "csv_files": [
+        "qpsk_333kBd_wide.csv",
+        "qpsk_333kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -7.848052686190605,
+          "level_db": -39.50346026468645,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 8.143039313809394,
+          "level_db": -37.97021171115303,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -62.44747692332746,
+      "reference_hz": 2369997272.6861906,
+      "modulation": "qpsk",
+      "standard": "DVB-S",
+      "fec": "1/2",
+      "frame": null,
+      "requested_baud": 333000,
+      "actual_baud": 333000.0,
+      "dac_hz": 7992000.0,
+      "sps": 24,
+      "period": 20,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "333000",
+        "--mod",
+        "qpsk",
+        "--fec",
+        "1/2",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 333000.000 OUT 7992000 AMP 300 SPS 24 PERIOD 20 IF 0 TARGET 3000 MOD QPSK REM 0 DIV 1 SREM 160000 SDIV 333000",
+      "tx_summary": "TX END symbols=156679920 bytes_in=1594662 underruns=149683 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          0,
+          3115
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2369993313.7490783,
+        "centroid_drift_hz": 9562.365346431732,
+        "signal_top_dbm": -4.825882464433892,
+        "raw_file": "qpsk_333kBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 10,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n10kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 1,
+        "points": 450,
+        "max_step_hz": 4450.0,
+        "centroid_alignment": true,
+        "reference_hz": 2369997272.6861906,
+        "centroid_drift_hz": 9565.797082424164,
+        "signal_top_dbm": -10.55196735213611,
+        "raw_file": "qpsk_333kBd_zoom.npz",
+        "duration_seconds": 4.01
+      }
+    },
+    {
+      "figure": "spectrum_250kBd.png",
+      "csv_files": [
+        "qpsk_250kBd_wide.csv",
+        "qpsk_250kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -8.097274198880672,
+          "level_db": -41.19883312238839,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 8.116533801119328,
+          "level_db": -41.232955183340074,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -62.996590145080994,
+      "reference_hz": 2370001506.1988807,
+      "modulation": "qpsk",
+      "standard": "DVB-S",
+      "fec": "1/2",
+      "frame": null,
+      "requested_baud": 250000,
+      "actual_baud": 250000.0,
+      "dac_hz": 8000000.0,
+      "sps": 32,
+      "period": 20,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "250000",
+        "--mod",
+        "qpsk",
+        "--fec",
+        "1/2",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 250000.000 OUT 8000000 AMP 300 SPS 32 PERIOD 20 IF 0 TARGET 3000 MOD QPSK REM 0 DIV 1 SREM 0 SDIV 250000",
+      "tx_summary": "TX END symbols=300725728 bytes_in=2323008 underruns=105648 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          369,
+          2971
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2369996398.9534154,
+        "centroid_drift_hz": 17414.3748087883,
+        "signal_top_dbm": -4.234402221878525,
+        "raw_file": "qpsk_250kBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 3,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n3kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 2,
+        "points": 899,
+        "max_step_hz": 1671.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370001506.1988807,
+        "centroid_drift_hz": 6792.023565769196,
+        "signal_top_dbm": -13.715105822045079,
+        "raw_file": "qpsk_250kBd_zoom.npz",
+        "duration_seconds": 22.04
+      }
+    },
+    {
+      "figure": "spectrum_125kBd.png",
+      "csv_files": [
+        "qpsk_125kBd_wide.csv",
+        "qpsk_125kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -8.05053516811514,
+          "level_db": -47.47044705656261,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 8.051914831884861,
+          "level_db": -46.467475814155456,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -66.03284666825606,
+      "reference_hz": 2369999310.168115,
+      "modulation": "qpsk",
+      "standard": "DVB-S",
+      "fec": "1/2",
+      "frame": null,
+      "requested_baud": 125000,
+      "actual_baud": 125000.0,
+      "dac_hz": 8000000.0,
+      "sps": 64,
+      "period": 20,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "125000",
+        "--mod",
+        "qpsk",
+        "--fec",
+        "1/2",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 125000.000 OUT 8000000 AMP 300 SPS 64 PERIOD 20 IF 0 TARGET 3000 MOD QPSK REM 0 DIV 1 SREM 0 SDIV 125000",
+      "tx_summary": "TX END symbols=214353920 bytes_in=826788 underruns=42129 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          451,
+          3465
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2369994993.8707867,
+        "centroid_drift_hz": 8159.280406951904,
+        "signal_top_dbm": -1.4283510298894055,
+        "raw_file": "qpsk_125kBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 3,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n3kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 1,
+        "points": 450,
+        "max_step_hz": 1671.0,
+        "centroid_alignment": true,
+        "reference_hz": 2369999310.168115,
+        "centroid_drift_hz": 584.8017039299011,
+        "signal_top_dbm": -10.67177774385307,
+        "raw_file": "qpsk_125kBd_zoom.npz",
+        "duration_seconds": 11.22
+      }
+    },
+    {
+      "figure": "spectrum_66kBd.png",
+      "csv_files": [
+        "qpsk_66kBd_wide.csv",
+        "qpsk_66kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -6.670905273714542,
+          "level_db": -51.39463018216648,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 6.669852726285457,
+          "level_db": -52.20482014104026,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -66.82703975215851,
+      "reference_hz": 2370000526.2737145,
+      "modulation": "qpsk",
+      "standard": "DVB-S",
+      "fec": "1/2",
+      "frame": null,
+      "requested_baud": 66000,
+      "actual_baud": 66000.0,
+      "dac_hz": 6666000.0,
+      "sps": 101,
+      "period": 24,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "66000",
+        "--mod",
+        "qpsk",
+        "--fec",
+        "1/2",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 66000.000 OUT 6666000 AMP 300 SPS 101 PERIOD 24 IF 0 TARGET 3000 MOD QPSK REM 0 DIV 1 SREM 16000 SDIV 66000",
+      "tx_summary": "TX END symbols=271988960 bytes_in=669828 underruns=13649 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          427,
+          3204
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2370000520.2916365,
+        "centroid_drift_hz": 4892.041274547577,
+        "signal_top_dbm": -0.5494576085650693,
+        "raw_file": "qpsk_66kBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 1,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n1000Hz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 2,
+        "points": 899,
+        "max_step_hz": 441.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370000526.2737145,
+        "centroid_drift_hz": 2606.627257347107,
+        "signal_top_dbm": -13.825297823516433,
+        "raw_file": "qpsk_66kBd_zoom.npz",
+        "duration_seconds": 25.05
+      }
+    },
+    {
+      "figure": "spectrum_33kBd.png",
+      "csv_files": [
+        "qpsk_33kBd_wide.csv",
+        "qpsk_33kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -6.671502539088249,
+          "level_db": -58.7469229148665,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 6.669255460911751,
+          "level_db": -58.13120366064964,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -69.3027094614938,
+      "reference_hz": 2370001123.5390882,
+      "modulation": "qpsk",
+      "standard": "DVB-S",
+      "fec": "1/2",
+      "frame": null,
+      "requested_baud": 33000,
+      "actual_baud": 33000.0,
+      "dac_hz": 6666000.0,
+      "sps": 202,
+      "period": 24,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "33000",
+        "--mod",
+        "qpsk",
+        "--fec",
+        "1/2",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 33000.000 OUT 6666000 AMP 300 SPS 202 PERIOD 24 IF 0 TARGET 3000 MOD QPSK REM 0 DIV 1 SREM 16000 SDIV 33000",
+      "tx_summary": "TX END symbols=188921106 bytes_in=234640 underruns=195 late_slots=0 (lag bits 0x0) buffer=438 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          659,
+          2851
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ],
+        [
+          2743,
+          2744
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2370001755.9976974,
+        "centroid_drift_hz": 3210.8880763053894,
+        "signal_top_dbm": 1.976483821899654,
+        "raw_file": "qpsk_33kBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 1,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n1000Hz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 1,
+        "points": 450,
+        "max_step_hz": 441.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370001123.5390882,
+        "centroid_drift_hz": 712.3459086418152,
+        "signal_top_dbm": -11.299843835280189,
+        "raw_file": "qpsk_33kBd_zoom.npz",
+        "duration_seconds": 12.62
+      }
+    },
+    {
+      "figure": "spectrum_8PSK_1MBd.png",
+      "csv_files": [
+        "8psk_1MBd_wide.csv",
+        "8psk_1MBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -7.588026048914433,
+          "level_db": -27.10122222761106,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 7.556739951085567,
+          "level_db": -27.162466210681934,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -54.66340535394781,
+      "reference_hz": 2370004507.0489144,
+      "modulation": "8psk",
+      "standard": "DVB-S2",
+      "fec": "3/5",
+      "frame": "normal",
+      "requested_baud": 1000000,
+      "actual_baud": 1000000.0,
+      "dac_hz": 8000000.0,
+      "sps": 8,
+      "period": 20,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "1000000",
+        "--mod",
+        "8psk",
+        "--fec",
+        "3/5",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00",
+        "--dvbs2"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 1000000.000 OUT 8000000 AMP 300 SPS 8 PERIOD 20 IF 0 TARGET 6000 MOD 8PSK REM 0 DIV 1 SREM 0 SDIV 1",
+      "tx_summary": "TX END symbols=238463104 bytes_in=10959386 underruns=72858 late_slots=0 (lag bits 0x0) buffer=1 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          0,
+          5706
+        ],
+        [
+          5162,
+          5680
+        ],
+        [
+          5024,
+          5676
+        ],
+        [
+          5086,
+          5701
+        ],
+        [
+          5172,
+          5687
+        ],
+        [
+          5130,
+          5700
+        ],
+        [
+          5148,
+          5688
+        ],
+        [
+          4841,
+          5679
+        ],
+        [
+          5123,
+          5674
+        ],
+        [
+          5025,
+          5711
+        ],
+        [
+          5165,
+          5680
+        ],
+        [
+          5066,
+          5702
+        ],
+        [
+          5098,
+          5674
+        ],
+        [
+          5173,
+          5691
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2370003457.235877,
+        "centroid_drift_hz": 43856.1470580101,
+        "signal_top_dbm": -12.836532223115771,
+        "raw_file": "8psk_1MBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 10,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n10kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 2,
+        "points": 899,
+        "max_step_hz": 6682.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370004507.0489144,
+        "centroid_drift_hz": 21502.123479366302,
+        "signal_top_dbm": -17.45129419690168,
+        "raw_file": "8psk_1MBd_zoom.npz",
+        "duration_seconds": 14.23
+      }
+    },
+    {
+      "figure": "spectrum_8PSK_500kBd.png",
+      "csv_files": [
+        "8psk_500kBd_wide.csv",
+        "8psk_500kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -8.23984222800541,
+          "level_db": -33.58894038217159,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 8.196683771994591,
+          "level_db": -33.304403028171706,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -57.305372793992966,
+      "reference_hz": 2370010443.2280054,
+      "modulation": "8psk",
+      "standard": "DVB-S2",
+      "fec": "3/5",
+      "frame": "normal",
+      "requested_baud": 500000,
+      "actual_baud": 500000.0,
+      "dac_hz": 8000000.0,
+      "sps": 16,
+      "period": 20,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "500000",
+        "--mod",
+        "8psk",
+        "--fec",
+        "3/5",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00",
+        "--dvbs2"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 500000.000 OUT 8000000 AMP 300 SPS 16 PERIOD 20 IF 0 TARGET 3000 MOD 8PSK REM 0 DIV 1 SREM 0 SDIV 500000",
+      "tx_summary": "TX END symbols=185311904 bytes_in=5646926 underruns=288143 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          0,
+          2679
+        ],
+        [
+          2075,
+          2625
+        ],
+        [
+          2212,
+          2630
+        ],
+        [
+          2203,
+          2625
+        ],
+        [
+          2152,
+          2624
+        ],
+        [
+          2347,
+          2617
+        ],
+        [
+          2274,
+          2623
+        ],
+        [
+          2211,
+          2617
+        ],
+        [
+          2326,
+          2656
+        ],
+        [
+          2289,
+          2673
+        ],
+        [
+          2299,
+          2639
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2370000857.4280267,
+        "centroid_drift_hz": 34546.147864341736,
+        "signal_top_dbm": -10.073187908946732,
+        "raw_file": "8psk_500kBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 10,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n10kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 1,
+        "points": 450,
+        "max_step_hz": 6682.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370010443.2280054,
+        "centroid_drift_hz": 15858.045866012573,
+        "signal_top_dbm": -14.435942503670752,
+        "raw_file": "8psk_500kBd_zoom.npz",
+        "duration_seconds": 7.62
+      }
+    },
+    {
+      "figure": "spectrum_8PSK_333kBd.png",
+      "csv_files": [
+        "8psk_333kBd_wide.csv",
+        "8psk_333kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -8.139547858970165,
+          "level_db": -38.248079049421264,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 7.8738151410298345,
+          "level_db": -37.51982779084439,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -58.695624495353684,
+      "reference_hz": 2369999235.85897,
+      "modulation": "8psk",
+      "standard": "DVB-S2",
+      "fec": "3/5",
+      "frame": "normal",
+      "requested_baud": 333000,
+      "actual_baud": 333000.0,
+      "dac_hz": 7992000.0,
+      "sps": 24,
+      "period": 20,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "333000",
+        "--mod",
+        "8psk",
+        "--fec",
+        "3/5",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00",
+        "--dvbs2"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 333000.000 OUT 7992000 AMP 300 SPS 24 PERIOD 20 IF 0 TARGET 3000 MOD 8PSK REM 0 DIV 1 SREM 160000 SDIV 333000",
+      "tx_summary": "TX END symbols=157664400 bytes_in=3188920 underruns=191511 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          0,
+          2539
+        ],
+        [
+          2440,
+          2534
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2369995453.0372596,
+        "centroid_drift_hz": 10273.042372226715,
+        "signal_top_dbm": -8.453019295857304,
+        "raw_file": "8psk_333kBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 10,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n10kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 1,
+        "points": 450,
+        "max_step_hz": 4450.0,
+        "centroid_alignment": true,
+        "reference_hz": 2369999235.85897,
+        "centroid_drift_hz": 9264.42150068283,
+        "signal_top_dbm": -13.462555678096301,
+        "raw_file": "8psk_333kBd_zoom.npz",
+        "duration_seconds": 4.01
+      }
+    },
+    {
+      "figure": "spectrum_8PSK_250kBd.png",
+      "csv_files": [
+        "8psk_250kBd_wide.csv",
+        "8psk_250kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -7.898173296662807,
+          "level_db": -41.77248621854741,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 7.892472703337193,
+          "level_db": -40.456338656427164,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -61.32196308800174,
+      "reference_hz": 2370002850.296663,
+      "modulation": "8psk",
+      "standard": "DVB-S2",
+      "fec": "3/5",
+      "frame": "normal",
+      "requested_baud": 250000,
+      "actual_baud": 250000.0,
+      "dac_hz": 8000000.0,
+      "sps": 32,
+      "period": 20,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "250000",
+        "--mod",
+        "8psk",
+        "--fec",
+        "3/5",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00",
+        "--dvbs2"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 250000.000 OUT 8000000 AMP 300 SPS 32 PERIOD 20 IF 0 TARGET 3000 MOD 8PSK REM 0 DIV 1 SREM 0 SDIV 250000",
+      "tx_summary": "TX END symbols=301775840 bytes_in=4643436 underruns=143624 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          0,
+          2705
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2428,
+          2601
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2369996748.8620663,
+        "centroid_drift_hz": 15442.811191082,
+        "signal_top_dbm": -6.085692317789641,
+        "raw_file": "8psk_250kBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 3,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n3kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 2,
+        "points": 899,
+        "max_step_hz": 1671.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370002850.296663,
+        "centroid_drift_hz": 606.1559791564941,
+        "signal_top_dbm": -16.32020814432807,
+        "raw_file": "8psk_250kBd_zoom.npz",
+        "duration_seconds": 22.04
+      }
+    },
+    {
+      "figure": "spectrum_8PSK_125kBd.png",
+      "csv_files": [
+        "8psk_125kBd_wide.csv",
+        "8psk_125kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -7.941277073177814,
+          "level_db": -46.35079857431222,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 7.960726926822185,
+          "level_db": -45.96740226911309,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -62.39130380673265,
+      "reference_hz": 2370001411.073178,
+      "modulation": "8psk",
+      "standard": "DVB-S2",
+      "fec": "3/5",
+      "frame": "normal",
+      "requested_baud": 125000,
+      "actual_baud": 125000.0,
+      "dac_hz": 8000000.0,
+      "sps": 64,
+      "period": 20,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "125000",
+        "--mod",
+        "8psk",
+        "--fec",
+        "3/5",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00",
+        "--dvbs2"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 125000.000 OUT 8000000 AMP 300 SPS 64 PERIOD 20 IF 0 TARGET 3000 MOD 8PSK REM 0 DIV 1 SREM 0 SDIV 125000",
+      "tx_summary": "TX END symbols=214222656 bytes_in=1640572 underruns=66086 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          0,
+          2564
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ],
+        [
+          2487,
+          2488
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2370007586.770573,
+        "centroid_drift_hz": 18652.37440109253,
+        "signal_top_dbm": -5.052393142540731,
+        "raw_file": "8psk_125kBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 3,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n3kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 1,
+        "points": 450,
+        "max_step_hz": 1671.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370001411.073178,
+        "centroid_drift_hz": 2521.2157249450684,
+        "signal_top_dbm": -13.838107194230432,
+        "raw_file": "8psk_125kBd_zoom.npz",
+        "duration_seconds": 11.22
+      }
+    },
+    {
+      "figure": "spectrum_8PSK_66kBd.png",
+      "csv_files": [
+        "8psk_66kBd_wide.csv",
+        "8psk_66kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -2.0831259977512357,
+          "level_db": -42.606324265591375,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 2.103956002248764,
+          "level_db": -43.0570025566664,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -65.41969391056615,
+      "reference_hz": 2370000720.997751,
+      "modulation": "8psk",
+      "standard": "DVB-S2",
+      "fec": "3/5",
+      "frame": "normal",
+      "requested_baud": 66000,
+      "actual_baud": 66000.0,
+      "dac_hz": 2112000.0,
+      "sps": 32,
+      "period": 75,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "66000",
+        "--mod",
+        "8psk",
+        "--fec",
+        "3/5",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00",
+        "--dvbs2"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 66000.000 OUT 2112000 AMP 300 SPS 32 PERIOD 75 IF 0 TARGET 3000 MOD 8PSK REM 1600000 DIV 2112000 SREM 0 SDIV 1",
+      "tx_summary": "TX END symbols=86507488 bytes_in=1335614 underruns=32132 late_slots=14700 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          0,
+          3222
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2370002419.09255,
+        "centroid_drift_hz": 4228.165953636169,
+        "signal_top_dbm": -1.9411867000833611,
+        "raw_file": "8psk_66kBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 1,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n1000Hz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 2,
+        "points": 899,
+        "max_step_hz": 441.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370000720.997751,
+        "centroid_drift_hz": 1005.9972858428955,
+        "signal_top_dbm": -16.057456373082548,
+        "raw_file": "8psk_66kBd_zoom.npz",
+        "duration_seconds": 25.24
+      }
+    },
+    {
+      "figure": "spectrum_8PSK_33kBd.png",
+      "csv_files": [
+        "8psk_33kBd_wide.csv",
+        "8psk_33kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -2.105327692152023,
+          "level_db": -47.661991213739654,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 2.1040263078479766,
+          "level_db": -45.84637544467901,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -66.34963560393679,
+      "reference_hz": 2370000650.692152,
+      "modulation": "8psk",
+      "standard": "DVB-S2",
+      "fec": "3/5",
+      "frame": "normal",
+      "requested_baud": 33000,
+      "actual_baud": 33000.0,
+      "dac_hz": 2112000.0,
+      "sps": 64,
+      "period": 75,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "33000",
+        "--mod",
+        "8psk",
+        "--fec",
+        "3/5",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00",
+        "--dvbs2"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 33000.000 OUT 2112000 AMP 300 SPS 64 PERIOD 75 IF 0 TARGET 3000 MOD 8PSK REM 1600000 DIV 2112000 SREM 0 SDIV 1",
+      "tx_summary": "TX END symbols=60161984 bytes_in=464240 underruns=11552 late_slots=5115 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          0,
+          2672
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ],
+        [
+          2488,
+          2488
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2369998003.174383,
+        "centroid_drift_hz": 7387.813132762909,
+        "signal_top_dbm": -1.11599397222096,
+        "raw_file": "8psk_33kBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 1,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n1000Hz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 1,
+        "points": 450,
+        "max_step_hz": 441.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370000650.692152,
+        "centroid_drift_hz": 1028.530071735382,
+        "signal_top_dbm": -14.106704109519978,
+        "raw_file": "8psk_33kBd_zoom.npz",
+        "duration_seconds": 12.82
+      }
+    },
+    {
+      "figure": "spectrum_16APSK_500kBd.png",
+      "csv_files": [
+        "16apsk_500kBd_wide.csv",
+        "16apsk_500kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -8.234560253670692,
+          "level_db": -35.108889367656715,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 8.201965746329307,
+          "level_db": -32.599679237743565,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -57.012588584852914,
+      "reference_hz": 2370005161.2536707,
+      "modulation": "16apsk",
+      "standard": "DVB-S2",
+      "fec": "2/3",
+      "frame": "normal",
+      "requested_baud": 500000,
+      "actual_baud": 500000.0,
+      "dac_hz": 8000000.0,
+      "sps": 16,
+      "period": 20,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "500000",
+        "--mod",
+        "16apsk",
+        "--fec",
+        "2/3",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00",
+        "--dvbs2"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 500000.000 OUT 8000000 AMP 300 SPS 16 PERIOD 20 IF 0 TARGET 2500 MOD 16APSK REM 0 DIV 1 SREM 0 SDIV 500000",
+      "tx_summary": "TX END symbols=185935408 bytes_in=5664218 underruns=292528 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          0,
+          2132
+        ],
+        [
+          1678,
+          2119
+        ],
+        [
+          1668,
+          2144
+        ],
+        [
+          1709,
+          2122
+        ],
+        [
+          1759,
+          2155
+        ],
+        [
+          1771,
+          2164
+        ],
+        [
+          1764,
+          2117
+        ],
+        [
+          1764,
+          2103
+        ],
+        [
+          1876,
+          2152
+        ],
+        [
+          1605,
+          2128
+        ],
+        [
+          1789,
+          2141
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2370002324.4841866,
+        "centroid_drift_hz": 18204.6968832016,
+        "signal_top_dbm": -10.367198820370533,
+        "raw_file": "16apsk_500kBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 10,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n10kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 1,
+        "points": 450,
+        "max_step_hz": 6682.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370005161.2536707,
+        "centroid_drift_hz": 5713.770520687103,
+        "signal_top_dbm": -15.32431598922326,
+        "raw_file": "16apsk_500kBd_zoom.npz",
+        "duration_seconds": 7.62
+      }
+    },
+    {
+      "figure": "spectrum_16APSK_333kBd.png",
+      "csv_files": [
+        "16apsk_333kBd_wide.csv",
+        "16apsk_333kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -8.120703918281555,
+          "level_db": -38.832713597581055,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 8.115376081718445,
+          "level_db": -37.534876991520576,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -57.747715097852215,
+      "reference_hz": 2370002663.9182816,
+      "modulation": "16apsk",
+      "standard": "DVB-S2",
+      "fec": "2/3",
+      "frame": "normal",
+      "requested_baud": 333000,
+      "actual_baud": 333000.0,
+      "dac_hz": 7992000.0,
+      "sps": 24,
+      "period": 20,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "333000",
+        "--mod",
+        "16apsk",
+        "--fec",
+        "2/3",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00",
+        "--dvbs2"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 333000.000 OUT 7992000 AMP 300 SPS 24 PERIOD 20 IF 0 TARGET 2500 MOD 16APSK REM 0 DIV 1 SREM 160000 SDIV 333000",
+      "tx_summary": "TX END symbols=157861296 bytes_in=3190556 underruns=196443 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          0,
+          2259
+        ],
+        [
+          1987,
+          1988
+        ],
+        [
+          1987,
+          1988
+        ],
+        [
+          1957,
+          2017
+        ],
+        [
+          1987,
+          1988
+        ],
+        [
+          1987,
+          1988
+        ],
+        [
+          1987,
+          1988
+        ],
+        [
+          1909,
+          2056
+        ],
+        [
+          1987,
+          1988
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2370002677.5889273,
+        "centroid_drift_hz": 18450.099383831024,
+        "signal_top_dbm": -9.642942038515475,
+        "raw_file": "16apsk_333kBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 10,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n10kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 1,
+        "points": 450,
+        "max_step_hz": 4450.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370002663.9182816,
+        "centroid_drift_hz": 10749.387578010559,
+        "signal_top_dbm": -14.17224467038345,
+        "raw_file": "16apsk_333kBd_zoom.npz",
+        "duration_seconds": 4.01
+      }
+    },
+    {
+      "figure": "spectrum_16APSK_250kBd.png",
+      "csv_files": [
+        "16apsk_250kBd_wide.csv",
+        "16apsk_250kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -1.883411835422039,
+          "level_db": -27.629107680392913,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 2.103225164577961,
+          "level_db": -29.098490008659574,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -59.041117679261866,
+      "reference_hz": 2370001451.835422,
+      "modulation": "16apsk",
+      "standard": "DVB-S2",
+      "fec": "2/3",
+      "frame": "normal",
+      "requested_baud": 250000,
+      "actual_baud": 250000.0,
+      "dac_hz": 2000000.0,
+      "sps": 8,
+      "period": 80,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "250000",
+        "--mod",
+        "16apsk",
+        "--fec",
+        "2/3",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00",
+        "--dvbs2"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 250000.000 OUT 2000000 AMP 300 SPS 8 PERIOD 80 IF 0 TARGET 2500 MOD 16APSK REM 0 DIV 2000000 SREM 0 SDIV 1",
+      "tx_summary": "TX END symbols=75530296 bytes_in=4648200 underruns=144888 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          0,
+          2295
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2370005650.997668,
+        "centroid_drift_hz": 7796.0165004730225,
+        "signal_top_dbm": -7.688292177582032,
+        "raw_file": "16apsk_250kBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 3,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n3kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 2,
+        "points": 899,
+        "max_step_hz": 1671.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370001451.835422,
+        "centroid_drift_hz": 3603.8212928771973,
+        "signal_top_dbm": -17.013429533699,
+        "raw_file": "16apsk_250kBd_zoom.npz",
+        "duration_seconds": 22.04
+      }
+    },
+    {
+      "figure": "spectrum_16APSK_125kBd.png",
+      "csv_files": [
+        "16apsk_125kBd_wide.csv",
+        "16apsk_125kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -2.0609446064324377,
+          "level_db": -37.57485274221238,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 1.9479643935675621,
+          "level_db": -35.63755315932751,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -62.90865196002153,
+      "reference_hz": 2370000810.6064324,
+      "modulation": "16apsk",
+      "standard": "DVB-S2",
+      "fec": "2/3",
+      "frame": "normal",
+      "requested_baud": 125000,
+      "actual_baud": 125000.0,
+      "dac_hz": 2000000.0,
+      "sps": 16,
+      "period": 80,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "125000",
+        "--mod",
+        "16apsk",
+        "--fec",
+        "2/3",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00",
+        "--dvbs2"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 125000.000 OUT 2000000 AMP 300 SPS 16 PERIOD 80 IF 0 TARGET 2500 MOD 16APSK REM 0 DIV 2000000 SREM 0 SDIV 1",
+      "tx_summary": "TX END symbols=53674096 bytes_in=1642656 underruns=69320 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          0,
+          2427
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2369998770.3488693,
+        "centroid_drift_hz": 15076.58569908142,
+        "signal_top_dbm": -4.340878022627468,
+        "raw_file": "16apsk_125kBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 3,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n3kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 1,
+        "points": 450,
+        "max_step_hz": 1671.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370000810.6064324,
+        "centroid_drift_hz": 2366.3211097717285,
+        "signal_top_dbm": -13.92893055936934,
+        "raw_file": "16apsk_125kBd_zoom.npz",
+        "duration_seconds": 11.22
+      }
+    },
+    {
+      "figure": "spectrum_16APSK_66kBd.png",
+      "csv_files": [
+        "16apsk_66kBd_wide.csv",
+        "16apsk_66kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -1.5929891270861625,
+          "level_db": -39.801619704148045,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 1.5918668729138374,
+          "level_db": -39.735386530703416,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -64.18264070730122,
+      "reference_hz": 2370000561.127086,
+      "modulation": "16apsk",
+      "standard": "DVB-S2",
+      "fec": "2/3",
+      "frame": "normal",
+      "requested_baud": 66000,
+      "actual_baud": 66000.0,
+      "dac_hz": 1584000.0,
+      "sps": 24,
+      "period": 101,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "66000",
+        "--mod",
+        "16apsk",
+        "--fec",
+        "2/3",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00",
+        "--dvbs2"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 66000.000 OUT 1584000 AMP 300 SPS 24 PERIOD 101 IF 0 TARGET 2500 MOD 16APSK REM 16000 DIV 1584000 SREM 0 SDIV 1",
+      "tx_summary": "TX END symbols=64635048 bytes_in=1329844 underruns=33440 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          0,
+          2436
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2370003620.7451444,
+        "centroid_drift_hz": 3411.5292840003967,
+        "signal_top_dbm": -3.116191636106383,
+        "raw_file": "16apsk_66kBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 1,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n1000Hz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 2,
+        "points": 899,
+        "max_step_hz": 441.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370000561.127086,
+        "centroid_drift_hz": 1931.2231945991516,
+        "signal_top_dbm": -16.25642524045449,
+        "raw_file": "16apsk_66kBd_zoom.npz",
+        "duration_seconds": 25.05
+      }
+    },
+    {
+      "figure": "spectrum_16APSK_33kBd.png",
+      "csv_files": [
+        "16apsk_33kBd_wide.csv",
+        "16apsk_33kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -0.7908975273933411,
+          "level_db": -39.66313192778423,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 0.790394472606659,
+          "level_db": -38.56574110778933,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -65.56635520019235,
+      "reference_hz": 2370000251.5273933,
+      "modulation": "16apsk",
+      "standard": "DVB-S2",
+      "fec": "2/3",
+      "frame": "normal",
+      "requested_baud": 33000,
+      "actual_baud": 33000.0,
+      "dac_hz": 792000.0,
+      "sps": 24,
+      "period": 202,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "33000",
+        "--mod",
+        "16apsk",
+        "--fec",
+        "2/3",
+        "--frame",
+        "normal",
+        "--null",
+        "--amp",
+        "300",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00",
+        "--dvbs2"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 33000.000 OUT 792000 AMP 300 SPS 24 PERIOD 202 IF 0 TARGET 2500 MOD 16APSK REM 16000 DIV 792000 SREM 0 SDIV 1",
+      "tx_summary": "TX END symbols=22560936 bytes_in=463278 underruns=13484 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          0,
+          2433
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ],
+        [
+          1988,
+          1988
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2370003759.7801056,
+        "centroid_drift_hz": 7570.273923873901,
+        "signal_top_dbm": -1.9653807578032438,
+        "raw_file": "16apsk_33kBd_wide.npz",
+        "duration_seconds": 13.03
+      },
+      "zoom": {
+        "rbw_khz": 1,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n1000Hz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 1,
+        "points": 450,
+        "max_step_hz": 441.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370000251.5273933,
+        "centroid_drift_hz": 795.6263246536255,
+        "signal_top_dbm": -14.155142380105502,
+        "raw_file": "16apsk_33kBd_zoom.npz",
+        "duration_seconds": 12.62
+      }
+    }
+  ],
+  "instrument": "version\r\ntinySA4_v1.4-217-gc5dd31f\r\nHW Version:V0.4.6 \r\nch> ",
+  "instrument_previous_attenuation": "attenuate\r\nusage: attenuate 0..31|auto\r\n  30\r\nch> ",
+  "instrument_previous_calculation": "calc\r\nusage: calc [{trace#}] off|minh|maxh|maxd|aver4|aver16|aver|quasi|log|lin\r\nOFF\r\nch> ",
+  "instrument_calculation": "calc off\r\nch> ",
+  "attenuation_response": "attenuate 10\r\nch> ",
+  "completed_at": "2026-10-05T00:29:08+02:00"
+}
