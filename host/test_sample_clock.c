@@ -24,6 +24,10 @@ static void check(uint32_t sample_hz, uint32_t samples) {
 }
 
 int main(void) {
+    check(333000u, 333u);               /* symbol clock: 333 symbols in exactly 160000 CPU cycles */
+    check(333000u, 333000u);            /* 480/481 cycles per symbol over one nominal second */
+    check(33000u, 33000u);              /* generic QPSK symbol clock */
+    check(66000u, 66000u);
     check(33000u * 64u, 33000u * 64u);   /* 33 kBd: 75/76 cycles, exactly one nominal second */
     check(66000u * 32u, 66000u * 32u);   /* 66 kBd, same DAC rate */
     check(33000u * 48u, 33000u * 48u);   /* explicitly selected SPS: 101/102 cycles */

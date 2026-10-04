@@ -179,10 +179,13 @@ def auto_sps_8psk(baud):
 
 
 def output_baud(baud, sps, modulation):
-    """Match firmware path selection; only the narrowband 8PSK C loop averages cycle intervals."""
+    """Match sample-clock averaging in narrowband 8PSK and symbol-clock averaging in the generic assembly loops."""
     sample_hz = baud * sps
     period = (CPU_HZ + sample_hz // 2) // sample_hz
     if modulation == "8psk" and period != 20 and 16 <= sps <= 64 and CPU_HZ // sample_hz >= P8_MIN_PERIOD:
+        return float(baud)
+    generic = (modulation == "8psk" and 16 <= sps <= 64 and period == 20) or (modulation == "qpsk" and 16 <= sps <= 232 and period in (20, 24))
+    if generic and CPU_HZ // baud == period * sps:
         return float(baud)
     return CPU_HZ / (period * sps)
 

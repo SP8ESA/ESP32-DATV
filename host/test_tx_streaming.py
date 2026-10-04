@@ -80,7 +80,7 @@ class StreamingTests(unittest.TestCase):
         self.assertEqual(enc.blocks, [])
 
     def test_low_8psk_rates_select_supported_firmware_periods(self):
-        for baud, expected_sps in [(10000, 64), (33000, 64), (66000, 32), (125000, 64), (500000, 16), (1000000, 8)]:
+        for baud, expected_sps in [(10000, 64), (33000, 64), (66000, 32), (125000, 64), (333000, 24), (500000, 16), (1000000, 8)]:
             with self.subTest(baud=baud):
                 sps = auto_sps_8psk(baud)
                 self.assertEqual(sps, expected_sps)
@@ -88,9 +88,16 @@ class StreamingTests(unittest.TestCase):
                 self.assertEqual(output_baud(baud, sps, "8psk"), baud)
                 self.assertTrue(period == 20 or CPU_HZ // (baud * sps) >= P8_MIN_PERIOD)
 
-    def test_fixed_assembly_rates_keep_their_existing_rounding(self):
-        self.assertEqual(output_baud(333000, 24, "8psk"), 1_000_000 / 3)
-        self.assertAlmostEqual(output_baud(33000, 202, "qpsk"), 33003.300330)
+    def test_generic_assembly_averages_standard_symbol_rates(self):
+        for modulation in ("qpsk", "8psk"):
+            self.assertEqual(output_baud(333000, 24, modulation), 333000)
+        self.assertEqual(output_baud(33000, 202, "qpsk"), 33000)
+        self.assertEqual(output_baud(66000, 101, "qpsk"), 66000)
+        self.assertEqual(output_baud(500000, 16, "8psk"), 500000)
+
+    def test_other_paths_keep_their_existing_rounding(self):
+        self.assertEqual(output_baud(333000, 24, "16apsk"), 1_000_000 / 3)
+        self.assertEqual(output_baud(33000, 16, "qpsk"), CPU_HZ / (303 * 16))
 
     def test_fractional_rate_matches_explicit_samples_per_symbol(self):
         self.assertEqual(output_baud(33000, 48, "8psk"), 33000)

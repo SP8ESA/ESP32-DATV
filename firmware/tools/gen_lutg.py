@@ -12,7 +12,9 @@ A symbol is S slots of exactly P cycles between stores:
   slot S-1   (E)   loads the first word of the next symbol and jumps into the sled of the next symbol's code copy
 Four code copies: N (normal), M1, M2, M3 (maintenance: silence check, fill report written to the USB FIFO in the symbols after
 each other). Each starts with a 24-nop sled; the computed jump into it absorbs whatever deviates from the schedule (USB register
-accesses vary by a cycle), so the symbol rate is exact (S*P cycles) and no slot but E ever has a variable length.
+accesses vary by a cycle). The absolute symbol schedule adds S*P cycles plus a remainder-accumulator carry;
+the E-to-next-symbol gap also absorbs that extra cycle. At 333000 Bd, S=24 and P=20, symbol intervals alternate between
+480 and 481 cycles, averaging 160000/333 cycles (24 samples per symbol, 7.992 MS/s average DAC rate).
 
 usage (from firmware/):  python3 tools/gen_lutg.py > main/lutg.S
   --rec timing   instead of driving the DAC every slot stamps the cycle counter right after the real DAC store and records it
@@ -27,8 +29,8 @@ unrolled slots, L the loop, D the measuring slot). How it was tuned, with host/l
   2. rebuild padded, run again, correct the pads by (P - spacing), repeat until every slot is P. The slots that read or write the USB
      registers (N7 = the avail read, B8..B10 and C8, C9 = the report writes) need a scan: an access completes on an edge of the 48 MHz
      USB clock, so one nop more can change the spacing by 2 cycles; take the pad for which the spacing is exactly P.
-The run-time symbol rate does not depend on any of this (the sync sled makes every symbol S * P cycles); the padding only keeps the
-individual DAC stores equally spaced. Cost rules measured on this core: ALU, load, store 1 cycle; a load whose result is used by the
+The run-time symbol rate follows the absolute schedule, including the fractional carry; the padding controls the
+individual DAC store spacing. Fractional scheduling is enabled when floor(CPU_HZ / requested_baud) equals S * P. Cost rules measured on this core: ALU, load, store 1 cycle; a load whose result is used by the
 next instruction +1; taken branch 3; j 2; jalr 3; USB register read ~6, USB register write ~8 (it blocks the next bus access).
 """
 import json
@@ -64,7 +66,8 @@ NS_INDEX = {c: i for i, c in enumerate(COPIES)}
 
 # context layout (struct lutg_ctx_t in main.c)
 CTX = dict(T0=0, T1=4, T2=8, T3=12, RING=16, QW=20, QR=24, TN=28, NSYM=32, UNDER=36, MPER=40, MCNT=44, TRX=48, QWSEEN=52, LIM=56, LIM1=60,
-           EXITC=64, LATE=68, S64M=72, SPER=76, RLIM=80, NS_N=84, NS_A=88, NS_B=92, NS_C=96, SLEDREC=100, REC=104, RECP=108)
+           EXITC=64, LATE=68, S64M=72, SPER=76, RLIM=80, NS_N=84, NS_A=88, NS_B=92, NS_C=96, SLEDREC=100, REC=104, RECP=108,
+           PHASE=112, REM=116, DIV=120)
 
 # cost model in cycles (measured on the C3, see README): alu/load/store 1, APB read ~6, APB write ~8, taken branch 3, j 2, jalr 3
 KERN = 8
@@ -215,6 +218,21 @@ def a_tgt():                          # next schedule target
     return ["    lw   tp, SPER(s0)", "    add  a1, a1, tp"], 2
 
 
+def a_phase0():
+    # a_mv has saved the previous NQ into Q; s5..s7 are scratch until slots 4/5.
+    return ["    lw   s5, PHASE(s0)", "    lw   s6, REM(s0)", "    add  s5, s5, s6",
+            "    lw   s6, DIV(s0)", "    sltu s7, s5, s6"], 5
+
+
+def a_phase2():
+    # s7 becomes 0 or -1: reduce the phase and add the carry without a branch.
+    return ["    addi s7, s7, -1", "    and  s6, s6, s7", "    sub  a1, a1, s7"], 3
+
+
+def a_phase3():
+    return ["    sub  s5, s5, s6", "    sw   s5, PHASE(s0)"], 2
+
+
 def a_qend():                         # end value of s1 for the loop (s1 still at the row base)
     return ["    lw   t5, S64M(s0)", "    add  s9, s1, t5"], 2
 
@@ -339,7 +357,7 @@ def copy_code(P, c, pads):
     sled_end = f".LsE{c}{P}"
     out.append(f"    .align 4\nlutg{P}_copy_{c}:\n    .rept {SLED}\n    nop\n    .endr\n{sled_end}:")
     sch = {j: [] for j in range(E)}
-    sch[0] = [a_mv, a_tgt]               # a_mv first (before the kern loads)
+    sch[0] = [a_mv, a_phase0]            # fractional work replaces existing padding; no extra cycles per slot
     sch[1] = [a_fill]
     sch[2] = [a_xa]
     sch[3] = [a_xb]
@@ -398,6 +416,9 @@ def copy_code(P, c, pads):
     if not PSK8:
         sch[11] = [lambda: a_nsym(c, "tp"), a_qend]
         sch[12] = [a_qadj]
+    sch[2].append(a_phase2)
+    sch[3].append(a_phase3)
+    sch[12].append(a_tgt)               # base interval is added before the D/E synchronization slots
     for j in range(E):
         s = Slot(P, f"{c}{j}", pads)
         L, cst = store_unrolled(j)
@@ -406,6 +427,10 @@ def copy_code(P, c, pads):
             L, cst = a_mv()
             s.add(L, cst)
             fl = [f for f in sch[0] if f is not a_mv]
+            for f in fl:
+                L, cst = f()
+                s.add(L, cst)
+            fl = []                     # leave kernel instructions available to hide the DIV load's latency
         else:
             fl = sch[j]
         s.add(kern(koff(j), Q), KERN)
@@ -525,7 +550,7 @@ def function(P):
     sw   t5, NS_B(s0)
     la   t5, .LsEC{P}
     sw   t5, NS_C(s0)
-    lw   a1, TN(s0)             /* start of the first symbol; the target of the first measure is one symbol later (added in slot 0) */
+    lw   a1, TN(s0)             /* start of the first symbol; the target of the first measure is one symbol later (base interval added in slot 12) */
     addi a1, a1, -{pads.get('KD', 8)}
 .Lent{P}:                       /* wait for the start (spin until at most SLED cycles are left, then the sled) */
     csrr t5, 0x7e2
@@ -574,7 +599,8 @@ def function(P):
 
 emit("/* Generated by gen_lutg.py - do not edit by hand (rec mode: " + REC + ").\n"
      " * Generic cycle-deterministic QPSK / RRC modulator for the ESP32-C3: any samples per symbol S >= %d (run-time value), one DAC word every\n"
-     " * P = 20 or 24 CPU cycles (8 or 6.67 MS/s at 160 MHz), tables of 4 groups x 16 rows x S words (RRC span 8). Context: struct lutg_ctx_t in main.c. */" % MIN_S)
+     " * P = 20 or 24 CPU cycles within a symbol, with an optional fractional cycle in the inter-symbol sync gap.\n"
+     " * Tables: 4 groups x 16 rows x S words (RRC span 8). Context: struct lutg_ctx_t in main.c. */" % MIN_S)
 for k, v in CTX.items():
     emit(f"    .equ {k}, {v}")
 emit(f'    .section .iram1.{"lutg_psk8" if PSK8 else "lutg"}, "ax"\n    .option norvc')

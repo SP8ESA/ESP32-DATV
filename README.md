@@ -63,21 +63,29 @@ Tune a DVB-S receiver to the centre frequency printed by the script, **symbol ra
 0.35 (for another `--baud`, the symbol rate the script prints). If it does not lock, try `--invert` or `--swap-iq`. Stop with
 Ctrl-C; the ESP also switches itself off 0.5 s after the PC goes quiet.
 
-Symbol rates. The DAC is updated every 20 CPU cycles (8 MS/s) or 24 cycles (6.67 MS/s); the script picks the number of samples per
-symbol (`--sps` overrides it):
+Symbol rates. The generic QPSK loop uses 20 or 24 CPU cycles between samples within a symbol; an optional extra cycle at the
+symbol boundary gives the requested average rate. The script picks the number of samples per symbol (`--sps` overrides it):
 
 | `--baud` | samples per symbol | cycles per DAC store | DAC rate | actual symbol rate |
 |---|---|---|---|---|
 | 1 000 000 | 8 | 20 | 8 MS/s | 1 000 000 (`lut8.S`) |
 | 500 000 | 16 | 20 | 8 MS/s | 500 000 |
-| 333 000 | 24 | 20 | 8 MS/s | 333 333 (+0.10 %) |
+| 333 000 | 24 | 20, fractional symbol boundary | 7.992 MS/s average | 333 000 average |
 | 250 000 | 32 | 20 | 8 MS/s | 250 000 |
 | 125 000 | 64 | 20 | 8 MS/s | 125 000 |
-| 66 000 | 101 | 24 | 6.67 MS/s | 66 007 (+0.01 %) |
-| 33 000 | 202 | 24 | 6.67 MS/s | 33 003 (+0.01 %) |
+| 66 000 | 101 | 24, fractional symbol boundary | 6.666 MS/s average | 66 000 average |
+| 33 000 | 202 | 24, fractional symbol boundary | 6.666 MS/s average | 33 000 average |
 
 Any other `--baud` that gives 16..232 samples per symbol within 1 % of the requested rate at one of the two periods (100 000 Bd = 80
-samples at 20 cycles, say) uses the same loop; the rest runs on the C loops at up to 4 MS/s. The script prints the actual symbol rate.
+samples at 20 cycles, say) uses the same loop; the rest runs on the C loops at up to 4 MS/s. The script prints the resulting symbol rate.
+The generic QPSK/8PSK assembly loops average the symbol duration when `floor(160000000 / baud) == samples_per_symbol * period`;
+rates farther from this grid still use the integer rate. At 333 kBd, the accumulator schedules 173 symbols of 480 cycles and 160 symbols
+of 481 cycles in each 333-symbol block: exactly 160000 CPU cycles, or 1 ms at the nominal 160 MHz clock. This adds at most one cycle
+(6.25 ns) to the symbol boundary; the accumulator runs across USB reports and cycle-counter wrap. The crystal's frequency error remains.
+On-board timing recordings confirmed this complete block for QPSK and 8PSK, including USB reads and maintenance reports, with zero
+late symbols. Both loops also matched all 264 DAC words checked against the host RRC model at 24 samples per symbol.
+A 30-second 333 kBd 8PSK video run reported `late_slots=0`. Live reception in the current SDRangel setup was not confirmed:
+a subsequent 15-second UDP transport-stream capture returned no packets.
 
 Other sources:
 
@@ -131,11 +139,12 @@ the symbol rate; pilots lower it by 2.2-2.4 %):
 | 9/10 | 1789 kb/s | - |
 
 **8PSK** (`--mod 8psk`): code rates 3/5, 2/3, 3/4, 5/6, 8/9 and 9/10 (short frames: no 9/10), symbol rates 125 to 500 kBd (8 MS/s with 16 to 64
-samples per symbol; `--baud 500000`, `400000`, `333333`, `250000`, `200000`, `125000` are the usual ones) and 1 MBd (8 samples per symbol, its own loop).
+samples per symbol; `--baud 500000`, `400000`, `333000`, `250000`, `200000`, `125000` are the usual ones) and 1 MBd (8 samples per symbol, its own loop).
 Lower rates, down to about 10 kBd, use a C loop with a slower DAC so that the RRC tables fit in RAM. A remainder accumulator alternates the two adjacent
 integer cycle intervals, giving the requested average symbol rate with less than one CPU cycle of accumulated deadline error. At 33 kBd the intervals
 are 75/76 cycles (average 75.757575...); CPU and USB clocks stay at their standard settings. Rates assume a nominal 160 MHz CPU and retain the crystal's
-frequency error. The minimum interval is 75 cycles, including room for accumulator and USB work. The 8 MS/s assembly paths keep their existing timing.
+frequency error. The minimum interval is 75 cycles, including room for accumulator and USB work. At 333 kBd, the generic assembly loop
+averages symbol boundaries as described above, retaining 24 samples per symbol with an average DAC rate of 7.992 MS/s.
 The script prints the resulting rate; set the receiver to that rate. Short frames reduce latency at narrow rates. Host tests cover rate selection and
 streaming; `cc -O2 -Wall -Wextra -Werror host/test_sample_clock.c -o /tmp/test_sample_clock && /tmp/test_sample_clock` checks the firmware accumulator
 against exact rational deadlines, including cycle-counter wrap.
@@ -148,6 +157,7 @@ was also confirmed at 66 kBd and 1 MBd. The spectrum measurements below cover 8P
 
 | requested 8PSK rate | samples per symbol | CPU cycles per DAC store | DAC update rate | actual symbol rate |
 |---|---|---|---|---|
+| 333 000 Bd | 24 | 20, fractional symbol boundary | 7.992 MS/s average | 333 000 Bd average |
 | 125 000 Bd | 64 | 20 | 8 MS/s | 125 000 Bd |
 | 66 000 Bd | 32 | 75/76 | 2.112 MS/s | 66 000 Bd average |
 | 33 000 Bd | 64 | 75/76 | 2.112 MS/s | 33 000 Bd average |
@@ -221,7 +231,8 @@ points, so they are sent as the outer ring points at the same angles (radius 1.1
   four row pointers. A symbol is S slots of exactly 20 (or 24) cycles: 13 unrolled slots carry the per-symbol work (the next symbol out
   of the ring, the row pointers, one USB byte), a one-slot loop of 18 cycles produces the other samples, and the last two slots read
   the cycle counter, compare it with the absolute symbol schedule and jump into a 24-`nop` sled in front of the next symbol's code, which
-  absorbs whatever deviates, so the symbol rate is exact and no slot but that one has a variable length. There are four copies of the
+  absorbs timing deviations and the fractional symbol-clock carry. The carry calculation replaces existing padding instructions;
+  the CPU remains at 160 MHz and USB at 48 MHz. There are four copies of the
   symbol code: normal, and three maintenance symbols after each other every 2048 symbols (silence check, fill report written to the
   USB FIFO). The timing was tuned with a recording build that stamps the cycle counter after every DAC store (the stores are spaced
   exactly 20 or 24 cycles apart, apart from a cycle where a slot touches the USB registers), and the DAC words it produces were compared
@@ -233,7 +244,7 @@ points, so they are sent as the outer ring points at the same angles (radius 1.1
   `firmware/tools/lutg_tune.py` to tune the padding. The DAC words it produces match the reference model on the PC for 16, 24, 32 and 40 samples
   per symbol (0 mismatches). Timing: the three maintenance copies are exact (every store 20 cycles after the previous one), the normal copy
   has two pairs of slots (7/8 and 11/12) that run 21 and 19 cycles: one USB register access in them lands on a 48 MHz clock edge so that no
-  amount of padding gives exactly 20; the pair adds up to 40, so the stream is on the grid again after it, and the symbol rate is exact as before.
+  amount of padding gives exactly 20. The sync sled absorbs these deviations and follows the symbol deadline, including its fractional carry.
 * **Narrowband 8PSK** (`tx_p8_c` in `main/main.c`). The same span-8 RRC tables and nibble-packed symbols, with 16 to 64 samples per symbol and rational
   DAC deadlines separated by at least 75 CPU cycles. The fractional phase persists across symbols and reports; the loop uses only 32-bit additions,
   a comparison, and a conditional subtraction for timing. Every 2048 symbols it reports the ring fill to the host: checking the transmit FIFO, writing the four report bytes,
@@ -330,14 +341,15 @@ Everything below is on one board (ESP32-C3 rev 0.4, 40 MHz crystal), with a Hack
   |---|---|---|
   | 1 MBd | 8 MS/s | -27 dB (the 4 MS/s output it replaced: -21 dB at +-4 MHz) |
   | 500 kBd | 8 MS/s | -34 dB |
-  | 333 kBd | 8 MS/s | -37 dB |
+  | 333 kBd (outdated measurement) | 8 MS/s | -37 dB |
   | 250 kBd | 8 MS/s | -41 dB |
   | 125 kBd | 8 MS/s | -49 dB |
-  | 66 kBd | 6.67 MS/s | -52 dB |
-  | 33 kBd | 6.67 MS/s | -59 dB (near the measurement floor) |
+  | 66 kBd (outdated measurement) | 6.67 MS/s | -52 dB |
+  | 33 kBd (outdated measurement) | 6.67 MS/s | -59 dB (near the measurement floor) |
 
   The image carries the same power at every rate, but it is as wide as the signal, so it sinks below a fixed RBW bin as the signal
-  gets narrower. The spectra themselves are in [Spectra](#spectra).
+  gets narrower. The spectra themselves are in [Spectra](#spectra). The 333, 66 and 33 kBd measurements predate fractional
+  symbol timing and no longer describe the current firmware; these measurements will be repeated.
 * The timing of the generic loop: the DAC stores are exactly 20 or 24 CPU cycles apart in all slots of a symbol (a recording build
   stamps the cycle counter after every store), apart from the 1-3 slots per symbol that read or write the USB registers, which
   vary by a cycle with the state of the USB FIFO; the sync sled makes up for it, so the symbol rate stays exact. `late_slots` was 0
@@ -362,7 +374,10 @@ of the carrier itself.
 
 ![QPSK 500 kS/s](docs/spectrum_500kBd.png)
 
-### 333 kBd (24 samples per symbol, 333 333 Bd): alias -37 dB
+### 333 kBd (historical integer timing: 24 samples per symbol, 333 333 Bd): alias -37 dB
+
+> **Outdated measurement.** The transmitter now averages the symbol duration using fractional CPU cycles, giving 333 000 Bd
+> and a mean DAC rate of 7.992 MS/s. This spectrum was measured with the previous integer timing. The measurements will be repeated.
 
 ![QPSK 333 kS/s](docs/spectrum_333kBd.png)
 
@@ -374,11 +389,17 @@ of the carrier itself.
 
 ![QPSK 125 kS/s](docs/spectrum_125kBd.png)
 
-### 66 kBd (101 samples per symbol at 24 cycles, 66 007 Bd): alias -52 dB at +-6.67 MHz
+### 66 kBd (historical integer timing: 101 samples per symbol at 24 cycles, 66 007 Bd): alias -52 dB at +-6.67 MHz
+
+> **Outdated measurement.** The transmitter now averages the symbol duration using fractional CPU cycles, giving 66 000 Bd
+> and a mean DAC rate of 6.666 MS/s. This spectrum was measured with the previous integer timing. The measurements will be repeated.
 
 ![QPSK 66 kS/s](docs/spectrum_66kBd.png)
 
-### 33 kBd (202 samples per symbol at 24 cycles, 33 003 Bd): alias -59 dB at +-6.67 MHz
+### 33 kBd (historical integer timing: 202 samples per symbol at 24 cycles, 33 003 Bd): alias -59 dB at +-6.67 MHz
+
+> **Outdated measurement.** The transmitter now averages the symbol duration using fractional CPU cycles, giving 33 000 Bd
+> and a mean DAC rate of 6.666 MS/s. This spectrum was measured with the previous integer timing. The measurements will be repeated.
 
 ![QPSK 33 kS/s](docs/spectrum_33kBd.png)
 
@@ -388,7 +409,9 @@ The same measurement for DVB-S2 8PSK (FEC 3/5, `--amp 300`, null packets only, w
 tinySA Ultra+ through an attenuator, centre 2370 MHz, 30 passes averaged in power, 30 MHz span at RBW 30 kHz and a zoom of about six symbol rates (RBW 10 kHz,
 3 kHz at 250, 200 and 125 kBd, 1 kHz at 66 and 33 kBd), every panel relative to its own top. The aliases are the zero-order-hold images of the DAC:
 
-Below 125 kBd, 8PSK uses a slower DAC so that its RRC tables fit in RAM: 2.909 MS/s at 66 kBd and 2.105 MS/s at 33 kBd. The aliases appear at multiples of that update rate.
+The historical measurements below used a slower DAC below 125 kBd so that the 8PSK RRC tables fit in RAM: 2.909 MS/s at 66 kBd and
+2.105 MS/s at 33 kBd. The current firmware averages fractional sample intervals and uses 2.112 MS/s at both rates; the 33/66 kBd
+spectra are outdated and the measurements will be repeated. The aliases appear at multiples of the DAC update rate.
 The narrowband zoom sweeps are aligned by their signal centroid before power averaging. The QPSK alias levels at 66 and 33 kBd were measured with its 6.67 MS/s DAC.
 The 2026-10-04 narrowband measurements used firmware `ba3e266`, normal frames, and 10 dB internal analyzer attenuation. The stronger of the first two aliases is listed below;
 the plots mark both separately. Firmware reported `late_slots=0` at 125 kBd, about 5.7% of DAC slots at 66 kBd, and 0.0023% at 33 kBd. The C loop counts a slot as late when its
@@ -399,12 +422,12 @@ deadline check is more than eight CPU cycles (50 ns) past the scheduled time. Th
 | 1 MBd | 8 MS/s | -28 dB | -27 dB |
 | 500 kBd | 8 MS/s | -34 dB | -34 dB |
 | 400 kBd | 8 MS/s | -36 dB | - |
-| 333 kBd | 8 MS/s | -38 dB | -37 dB |
+| 333 kBd (outdated measurement) | 8 MS/s | -38 dB | -37 dB |
 | 250 kBd | 8 MS/s | -41 dB | -41 dB |
 | 200 kBd | 8 MS/s | -43 dB | - |
 | 125 kBd | 8 MS/s | -48 dB | -49 dB |
-| 66 kBd | 2.909 MS/s | -45 dB | -52 dB |
-| 33 kBd | 2.105 MS/s | -48 dB | -59 dB |
+| 66 kBd (outdated measurement) | 2.909 MS/s | -45 dB | -52 dB |
+| 33 kBd (outdated measurement) | 2.105 MS/s | -48 dB | -59 dB |
 
 ### 8PSK, 1 MBd (8 samples per symbol, `lutg_p8s8.S`): alias -28 dB
 
@@ -418,7 +441,10 @@ deadline check is more than eight CPU cycles (50 ns) past the scheduled time. Th
 
 ![8PSK 400 kS/s](docs/spectrum_8PSK_400kBd.png)
 
-### 8PSK, 333 kBd (24 samples per symbol, 333 333 Bd): alias -38 dB
+### 8PSK, 333 kBd (historical integer timing: 24 samples per symbol, 333 333 Bd): alias -38 dB
+
+> **Outdated measurement.** The transmitter now averages the symbol duration using fractional CPU cycles, giving 333 000 Bd
+> and a mean DAC rate of 7.992 MS/s. This spectrum was measured with the previous integer timing. The measurements will be repeated.
 
 ![8PSK 333 kS/s](docs/spectrum_8PSK_333kBd.png)
 
@@ -434,11 +460,17 @@ deadline check is more than eight CPU cycles (50 ns) past the scheduled time. Th
 
 ![8PSK 125 kS/s](docs/spectrum_8PSK_125kBd.png)
 
-### 8PSK, 66 kBd (44 samples per symbol at 55 cycles, 66 116 Bd): alias -45 dB at +-2.909 MHz
+### 8PSK, 66 kBd (historical integer timing: 44 samples per symbol at 55 cycles, 66 116 Bd): alias -45 dB at +-2.909 MHz
+
+> **Outdated measurement.** The transmitter now averages DAC sample intervals using 75/76 CPU cycles, giving 66 000 Bd with
+> 32 samples per symbol and a mean DAC rate of 2.112 MS/s. The timing method has changed. The measurements will be repeated.
 
 ![8PSK 66 kS/s](docs/spectrum_8PSK_66kBd.png)
 
-### 8PSK, 33 kBd (64 samples per symbol at 76 cycles, 32 895 Bd): alias -48 dB at +-2.105 MHz
+### 8PSK, 33 kBd (historical integer timing: 64 samples per symbol at 76 cycles, 32 895 Bd): alias -48 dB at +-2.105 MHz
+
+> **Outdated measurement.** The transmitter now averages DAC sample intervals using 75/76 CPU cycles, giving 33 000 Bd with
+> 64 samples per symbol and a mean DAC rate of 2.112 MS/s. The timing method has changed. The measurements will be repeated.
 
 ![8PSK 33 kS/s](docs/spectrum_8PSK_33kBd.png)
 

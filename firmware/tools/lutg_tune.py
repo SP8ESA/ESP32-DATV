@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tunes the nop pads of the generated lutg loops with the timing build (gen_lutg.py --rec timing, #define LUTG_REC 1 in main.c).
 
-  python3 tools/lutg_tune.py --psk8 [--sps 24 --baud 333333] [--junk 0] [--rounds 8]      (from firmware/, IDF exported, ESP on the USB port)
+  python3 tools/lutg_tune.py --psk8 [--sps 24 --baud 333000] [--junk 0] [--rounds 8]      (from firmware/, IDF exported, ESP on the USB port)
   python3 tools/lutg_tune.py --a16 [--sps 24 --baud 333333]                                  (the 16APSK loop, gen_lutg_a16.py, tools/lutg_a16_pads.json)
 
 One round = generate lutg*.S with the current pads, build, flash, run PSK8T / QPSKT, read "T<k> <copy>: slot:spacing ... | E x" (only the
@@ -58,7 +58,7 @@ def main():
     ap.add_argument("--psk8", action="store_true")
     ap.add_argument("--a16", action="store_true")
     ap.add_argument("--sps", type=int, default=24)
-    ap.add_argument("--baud", type=int, default=333333)
+    ap.add_argument("--baud", type=int, default=333000)
     ap.add_argument("--junk", type=int, default=0)
     ap.add_argument("--rounds", type=int, default=8)
     ap.add_argument("--port", default="/dev/ttyACM0")
