@@ -163,14 +163,19 @@ def auto_sps_16apsk(baud):
 
 
 def auto_sps_8psk(baud):
-    """8PSK runs only at 8 MS/s: the generic loop (lutg_psk8.S) with 16..40 samples per symbol, i.e. 200..500 kBd, the rate within 1 %, and the
-    dedicated 1 MBd loop (lutg_p8s8.S, 8 samples per symbol, 3 bits per symbol on the USB link)."""
+    """8PSK runs at 8 MS/s in the assembly loops (lutg_psk8.S: 16..64 samples per symbol, i.e. 125..500 kBd, the rate within 1 %; lutg_p8s8.S: 1 MBd, 8 samples
+    per symbol, 3 bits per symbol on the USB link). Below 125 kBd the tables of 1024 x S bytes would not fit at 8 MS/s: a C loop with a slower DAC (a store every
+    55 or more cycles) takes S = 16..64 samples per symbol, the largest one that gets the rate within 0.5 %."""
     if baud == 1_000_000:
         return 8
     sps = round(CPU_HZ / (20 * baud))
-    if 16 <= sps <= 40 and abs(CPU_HZ / (20 * sps) / baud - 1) <= 0.01:
+    if 16 <= sps <= 64 and abs(CPU_HZ / (20 * sps) / baud - 1) <= 0.01:
         return sps
-    raise SystemExit(f"8PSK: --baud must be 1000000 or {CPU_HZ // 20 // 40} .. {CPU_HZ // 20 // 16} Bd with 8 MS/s / baud a whole number of samples (e.g. 1000000, 500000, 400000, 333333, 250000, 200000)")
+    for sps in range(64, 15, -1):
+        period = round(CPU_HZ / (baud * sps))
+        if period >= 55 and abs(CPU_HZ / (period * sps) / baud - 1) <= 0.005:
+            return sps
+    raise SystemExit(f"8PSK: --baud must be 1000000, {CPU_HZ // 20 // 64} .. {CPU_HZ // 20 // 16} Bd (8 MS/s) or below that down to about 10000 Bd (slower DAC, a C loop), e.g. 1000000, 500000, 250000, 125000, 66000, 33000")
 
 
 def load_cal(path):
@@ -182,6 +187,18 @@ def load_cal(path):
     return c["dc"], c["iq_gain"], c["iq_phase_deg"]
 
 
+def feed_symbols(ready, stop_enc, src, enc, cw_byte=None):
+    """Encode ahead of USB writes, retaining each block until the queue accepts it."""
+    while not stop_enc.is_set():
+        data = bytes([cw_byte]) * 4096 if cw_byte is not None else enc.encode(src.take(8))
+        while not stop_enc.is_set():
+            try:
+                ready.put(data, timeout=0.1)
+                break
+            except queue.Full:
+                continue
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--freq", type=float, default=2402.000, help="centre of the spectrum [MHz] (13 cm band)")
@@ -189,7 +206,7 @@ def main():
     ap.add_argument("--fec", default="1/2", help="code rate: DVB-S 1/2 2/3 3/4 5/6 7/8; with --dvbs2 1/4 1/3 2/5 1/2 3/5 2/3 3/4 4/5 5/6 8/9 9/10 (short frames: no 9/10)")
     ap.add_argument("--dvbs2", action="store_true", help="DVB-S2 instead of DVB-S")
     ap.add_argument("--mod", default="qpsk", choices=("qpsk", "8psk", "16apsk"),
-                    help="DVB-S2 modulation (8PSK: code rates 3/5 2/3 3/4 5/6 8/9 9/10, 200..500 kBd and 1 MBd; 16APSK: code rates 2/3 3/4 4/5 5/6 8/9 9/10, 333..500 kBd)")
+                    help="DVB-S2 modulation (8PSK: code rates 3/5 2/3 3/4 5/6 8/9 9/10, 10..500 kBd and 1 MBd; 16APSK: code rates 2/3 3/4 4/5 5/6 8/9 9/10, 333..500 kBd)")
     ap.add_argument("--frame", default="normal", choices=("normal", "short"), help="DVB-S2 FECFRAME size (normal 64800 bits, short 16200)")
     ap.add_argument("--pilots", action="store_true", help="DVB-S2 pilots (36 symbols after every 16 slots)")
     ap.add_argument("--sps", type=int, default=0, help="DAC samples per symbol (4, 8, 16, or 16..232 when baud * sps is 8 or 6.67 MHz); 0 = automatic: the hand-scheduled 8 / 6.67 MS/s loops when they fit the symbol rate, else the most that keeps the output at or below 4 MS/s")
@@ -266,14 +283,8 @@ def main():
         ready = queue.Queue(maxsize=48)
         stop_enc = threading.Event()
 
-        def feeder():
-            while not stop_enc.is_set():
-                try:
-                    ready.put(b"\x00" * 4096 if a.cw and a.mod != "qpsk" else b"\xFF" * 4096 if a.cw else enc.encode(src.take(8)), timeout=0.1)     # 0xFF = four QPSK symbols (+1, +1) / 0x00 = two 8PSK symbols (1, 0): a carrier
-                except queue.Full:
-                    pass
-
-        threading.Thread(target=feeder, daemon=True).start()
+        cw_byte = (0xFF if a.mod == "qpsk" else 0x00) if a.cw else None
+        threading.Thread(target=feed_symbols, args=(ready, stop_enc, src, enc, cw_byte), daemon=True).start()
         t_start = t_rep = time.time()
         fmin, fmax = 10 ** 9, 0
         while not a.seconds or time.time() - t_start < a.seconds:

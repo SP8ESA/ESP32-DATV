@@ -2,7 +2,7 @@
 
 # ESP32-DATV
 
-**A DVB-S and DVB-S2 digital amateur TV transmitter in a bare ESP32-C3: QPSK from 1 Msymbol/s down to 33 ksymbol/s (DVB-S2 also 8PSK, 200 to 500 ksymbol/s and 1 Msymbol/s, and 16APSK, 333 to 500 ksymbol/s) in the 13 cm band, no RF hardware added.**
+**A DVB-S and DVB-S2 digital amateur TV transmitter in a bare ESP32-C3: QPSK from 1 Msymbol/s down to 33 ksymbol/s (DVB-S2 also 8PSK, about 10 to 500 ksymbol/s and 1 Msymbol/s, and 16APSK, 333 to 500 ksymbol/s) in the 13 cm band, no RF hardware added.**
 
 ![Spectrum of the transmitted DVB-S signal](docs/spectrum.png)
 
@@ -106,6 +106,7 @@ python3 tx_dvbs.py --freq 2402.000 --baud 500000 --dvbs2 --fec 2/3              
 python3 tx_dvbs.py --freq 2402.000 --baud 125000 --dvbs2 --fec 3/4 --frame short --pilots
 python3 tx_dvbs.py --freq 2402.000 --baud 400000 --dvbs2 --mod 8psk --fec 2/3             # DVB-S2, 8PSK 2/3
 python3 tx_dvbs.py --freq 2402.000 --baud 1000000 --dvbs2 --mod 8psk --fec 3/5            # DVB-S2, 8PSK at 1 MBd
+python3 tx_dvbs.py --freq 2402.000 --baud 33000 --dvbs2 --mod 8psk --fec 2/3 --frame short # narrowband 8PSK (actual 32 895 Bd)
 python3 tx_dvbs.py --freq 2402.000 --baud 500000 --dvbs2 --mod 16apsk --fec 2/3            # DVB-S2, 16APSK 2/3
 ```
 
@@ -129,8 +130,20 @@ the symbol rate; pilots lower it by 2.2-2.4 %):
 | 8/9 | 1766 kb/s | 1728 kb/s |
 | 9/10 | 1789 kb/s | - |
 
-**8PSK** (`--mod 8psk`): code rates 3/5, 2/3, 3/4, 5/6, 8/9 and 9/10 (short frames: no 9/10), symbol rates 200 to 500 kBd (8 MS/s with 16 to 40
-samples per symbol; `--baud 500000`, `400000`, `333333`, `250000`, `200000` are the usual ones) and 1 MBd (8 samples per symbol, its own loop).
+**8PSK** (`--mod 8psk`): code rates 3/5, 2/3, 3/4, 5/6, 8/9 and 9/10 (short frames: no 9/10), symbol rates 125 to 500 kBd (8 MS/s with 16 to 64
+samples per symbol; `--baud 500000`, `400000`, `333333`, `250000`, `200000`, `125000` are the usual ones) and 1 MBd (8 samples per symbol, its own loop).
+Lower rates, down to about 10 kBd, use a C loop with a slower DAC so that the RRC tables fit in RAM. The script chooses the samples per symbol and prints
+the actual rate; set the receiver to that rate. Short frames reduce latency at narrow rates. The lower-rate streaming path has host-side regression tests.
+Hardware reception at 66 kBd (actual 66 115.7 Bd), 8PSK 2/3, short frames, recovered a continuous run of 197 BBFRAMEs from a 20-second HackRF recording:
+1380 transport packets passed their CRC-8 checks, with no continuity errors, and the exported video and audio decoded without errors. SDRangel reception
+was also confirmed at 66 kBd and 1 MBd. The spectrum measurements below cover 8PSK at 200 kBd and above.
+
+| requested 8PSK rate | samples per symbol | CPU cycles per DAC store | DAC update rate | actual symbol rate |
+|---|---|---|---|---|
+| 125 000 Bd | 64 | 20 | 8 MS/s | 125 000 Bd |
+| 66 000 Bd | 44 | 55 | 2.909 MS/s | 66 116 Bd |
+| 33 000 Bd | 64 | 76 | 2.105 MS/s | 32 895 Bd |
+
 Useful transport stream rate at 400 kBd, no pilots (multiply by 2.5 for 1 MBd: 3/5 1780 kb/s, 2/3 1981, 3/4 2228, 5/6 2479, 8/9 2646, 9/10 2679 kb/s in normal frames):
 
 | code rate | normal frame | short frame |
@@ -202,7 +215,7 @@ points, so they are sent as the outer ring points at the same angles (radius 1.1
   USB FIFO). The timing was tuned with a recording build that stamps the cycle counter after every DAC store (the stores are spaced
   exactly 20 or 24 cycles apart, apart from a cycle where a slot touches the USB registers), and the DAC words it produces were compared
   with the reference model on the PC (`host/test_lutg_words.c`). Tables take 256 x S bytes (52 KB at 33 kBd).
-* **8PSK** (`main/lutg_psk8.S`, `gen_lutg.py --psk8`, `PSK8T` command). The same loop structure at 8 MS/s with 16 to 40 samples per symbol,
+* **8PSK** (`main/lutg_psk8.S`, `gen_lutg.py --psk8`, `PSK8T` command). The same loop structure at 8 MS/s with 16 to 64 samples per symbol,
   but the four tables of two symbols now have 64 rows each (3 + 3 bits of history, index x 4 bytes, the next sample of a row 256 bytes further),
   so the tables take 1024 x S bytes (40 KB at 200 kBd). A symbol is the angle index 0..7 (point k = e^(j pi k / 4)), two to a ring byte, low nibble
   first. The loop was developed as in `lutg.S`: a timing build and a recording build (`host/lutg_record.py`, `gen_lutg.py --rec timing|words`),
@@ -210,6 +223,10 @@ points, so they are sent as the outer ring points at the same angles (radius 1.1
   per symbol (0 mismatches). Timing: the three maintenance copies are exact (every store 20 cycles after the previous one), the normal copy
   has two pairs of slots (7/8 and 11/12) that run 21 and 19 cycles: one USB register access in them lands on a 48 MHz clock edge so that no
   amount of padding gives exactly 20; the pair adds up to 40, so the stream is on the grid again after it, and the symbol rate is exact as before.
+* **Narrowband 8PSK** (`tx_p8_c` in `main/main.c`). The same span-8 RRC tables and nibble-packed symbols, with 16 to 64 samples per symbol at a DAC store
+  every 55 or more CPU cycles. Every 2048 symbols the loop reports the ring fill to the host: checking the transmit FIFO, writing the four report bytes,
+  flushing and checking for host silence are spread across separate sample slots. The encoder thread retains a prepared block while its queue is full,
+  preserving the coded stream when USB writes pause.
 * **8PSK at 1 MBd** (`main/lutg_p8s8.S`, `tools/gen_lutg_p8s8.py`, `PSK8T ... 1000000 8`). The generic loop needs 16 or more slots per symbol for
   its per-symbol work, so 1 MBd has its own loop with no inner loop at all: a pass is 8 symbols = 64 slots of 20 cycles, fully unrolled, with a
   sync (measure, jump into a nop sled) every two symbols. The four 2-symbol tables are 8 KB; their row pointers are biased by 1024 bytes so that the
@@ -422,7 +439,7 @@ therefore `--amp 420`. (The shoulder of 16APSK next to the signal is higher than
   (+-6.67 MHz at 66 and 33 kBd), 27 dB (1 MBd) to 59 dB (33 kBd) below the signal in a 30 kHz bin, and the carrier's own noise forms
   a skirt about 35-40 dB below the signal level per bin. Add a band-pass filter and/or attenuation as your licence and
   local rules require.
-* DVB-S2: QPSK, 8PSK and 16APSK only (no 32APSK), 8PSK only at 200 to 500 kBd and 1 MBd, 16APSK only at 333 to 500 kBd, constant coding and modulation (one MODCOD for the whole stream, no ACM), one transport stream, roll-off 0.35
+* DVB-S2: QPSK, 8PSK and 16APSK only (no 32APSK), 8PSK at about 10 to 500 kBd and 1 MBd (below 125 kBd the DAC is slower), 16APSK only at 333 to 500 kBd, constant coding and modulation (one MODCOD for the whole stream, no ACM), one transport stream, roll-off 0.35
   (the filter in the ESP), no input stream synchronisation (ISSY) or null packet deletion, no dummy PLFRAMEs (the stream is always
   padded with null packets). Short frames have no 9/10.
 * Transmit only, and only in the 13 cm band: the firmware refuses to transmit outside 2300..2450 MHz.
