@@ -41,7 +41,8 @@ import dvbs  # noqa: E402
 import dvbs2  # noqa: E402
 import esp_link  # noqa: E402
 
-CPU_HZ = 160e6
+CPU_HZ = 160_000_000
+P8_MIN_PERIOD = 75                 # floor interval, including fractional-deadline overhead in the C loop
 DEMO_FILM = os.path.join(HERE, "..", "media", "sintel_trailer.mp4")
 
 
@@ -165,17 +166,25 @@ def auto_sps_16apsk(baud):
 def auto_sps_8psk(baud):
     """8PSK runs at 8 MS/s in the assembly loops (lutg_psk8.S: 16..64 samples per symbol, i.e. 125..500 kBd, the rate within 1 %; lutg_p8s8.S: 1 MBd, 8 samples
     per symbol, 3 bits per symbol on the USB link). Below 125 kBd the tables of 1024 x S bytes would not fit at 8 MS/s: a C loop with a slower DAC (a store every
-    55 or more cycles) takes S = 16..64 samples per symbol, the largest one that gets the rate within 0.5 %."""
+    75 or more cycles) takes S = 16..64 samples per symbol. Fractional cycle deadlines give the requested average rate."""
     if baud == 1_000_000:
         return 8
     sps = round(CPU_HZ / (20 * baud))
     if 16 <= sps <= 64 and abs(CPU_HZ / (20 * sps) / baud - 1) <= 0.01:
         return sps
     for sps in range(64, 15, -1):
-        period = round(CPU_HZ / (baud * sps))
-        if period >= 55 and abs(CPU_HZ / (period * sps) / baud - 1) <= 0.005:
+        if CPU_HZ // (baud * sps) >= P8_MIN_PERIOD:
             return sps
     raise SystemExit(f"8PSK: --baud must be 1000000, {CPU_HZ // 20 // 64} .. {CPU_HZ // 20 // 16} Bd (8 MS/s) or below that down to about 10000 Bd (slower DAC, a C loop), e.g. 1000000, 500000, 250000, 125000, 66000, 33000")
+
+
+def output_baud(baud, sps, modulation):
+    """Match firmware path selection; only the narrowband 8PSK C loop averages cycle intervals."""
+    sample_hz = baud * sps
+    period = (CPU_HZ + sample_hz // 2) // sample_hz
+    if modulation == "8psk" and period != 20 and 16 <= sps <= 64 and CPU_HZ // sample_hz >= P8_MIN_PERIOD:
+        return float(baud)
+    return CPU_HZ / (period * sps)
 
 
 def load_cal(path):
@@ -239,8 +248,7 @@ def main():
         a.sps = auto_sps_16apsk(a.baud) if a.mod == "16apsk" else auto_sps_8psk(a.baud) if a.mod == "8psk" else auto_sps(a.baud)
     if not a.target:
         a.target = 6000 if a.mod == "8psk" and a.sps == 8 else 2500 if a.mod == "16apsk" else 3000      # 16APSK: the ESP's ring is 8 KB (4064 pairs)
-    period = round(CPU_HZ / (a.baud * a.sps))
-    baud_act = CPU_HZ / (period * a.sps)
+    baud_act = output_baud(a.baud, a.sps, a.mod)
     if a.mod in ("8psk", "16apsk") and 460000 < baud_act < 1000000:
         print(f"note: {a.mod.upper()} at {baud_act / 1e3:.0f} kBd needs {baud_act / 2e3:.0f} kB/s over the USB link to the ESP, which carries about 262 kB/s at the ESP's read rate: "
               "watch the 'ESP buffer' lines, if it runs dry the receiver sees short drop-outs (lower the symbol rate)")

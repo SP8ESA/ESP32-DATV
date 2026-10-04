@@ -106,7 +106,7 @@ python3 tx_dvbs.py --freq 2402.000 --baud 500000 --dvbs2 --fec 2/3              
 python3 tx_dvbs.py --freq 2402.000 --baud 125000 --dvbs2 --fec 3/4 --frame short --pilots
 python3 tx_dvbs.py --freq 2402.000 --baud 400000 --dvbs2 --mod 8psk --fec 2/3             # DVB-S2, 8PSK 2/3
 python3 tx_dvbs.py --freq 2402.000 --baud 1000000 --dvbs2 --mod 8psk --fec 3/5            # DVB-S2, 8PSK at 1 MBd
-python3 tx_dvbs.py --freq 2402.000 --baud 33000 --dvbs2 --mod 8psk --fec 2/3 --frame short # narrowband 8PSK (actual 32 895 Bd)
+python3 tx_dvbs.py --freq 2402.000 --baud 33000 --dvbs2 --mod 8psk --fec 2/3 --frame short # narrowband 8PSK, average 33 000 Bd
 python3 tx_dvbs.py --freq 2402.000 --baud 500000 --dvbs2 --mod 16apsk --fec 2/3            # DVB-S2, 16APSK 2/3
 ```
 
@@ -132,17 +132,28 @@ the symbol rate; pilots lower it by 2.2-2.4 %):
 
 **8PSK** (`--mod 8psk`): code rates 3/5, 2/3, 3/4, 5/6, 8/9 and 9/10 (short frames: no 9/10), symbol rates 125 to 500 kBd (8 MS/s with 16 to 64
 samples per symbol; `--baud 500000`, `400000`, `333333`, `250000`, `200000`, `125000` are the usual ones) and 1 MBd (8 samples per symbol, its own loop).
-Lower rates, down to about 10 kBd, use a C loop with a slower DAC so that the RRC tables fit in RAM. The script chooses the samples per symbol and prints
-the actual rate; set the receiver to that rate. Short frames reduce latency at narrow rates. The lower-rate streaming path has host-side regression tests.
-Hardware reception at 66 kBd (actual 66 115.7 Bd), 8PSK 2/3, short frames, recovered a continuous run of 197 BBFRAMEs from a 20-second HackRF recording:
+Lower rates, down to about 10 kBd, use a C loop with a slower DAC so that the RRC tables fit in RAM. A remainder accumulator alternates the two adjacent
+integer cycle intervals, giving the requested average symbol rate with less than one CPU cycle of accumulated deadline error. At 33 kBd the intervals
+are 75/76 cycles (average 75.757575...); CPU and USB clocks stay at their standard settings. Rates assume a nominal 160 MHz CPU and retain the crystal's
+frequency error. The minimum interval is 75 cycles, including room for accumulator and USB work. The 8 MS/s assembly paths keep their existing timing.
+The script prints the resulting rate; set the receiver to that rate. Short frames reduce latency at narrow rates. Host tests cover rate selection and
+streaming; `cc -O2 -Wall -Wextra -Werror host/test_sample_clock.c -o /tmp/test_sample_clock && /tmp/test_sample_clock` checks the firmware accumulator
+against exact rational deadlines, including cycle-counter wrap.
+The fractional firmware was flashed and exercised with a 15-second 33 kBd 8PSK 2/3 short-frame video run: the buffer held 2488 pairs after startup.
+It reported 3302 sample deadline checks more than 8 CPU cycles late out of 32 899 008 output samples (0.0100%); this is a transmitter timing check,
+not confirmation of receiver lock. The one-cycle bound above describes the calculated deadlines, not all physical DAC store jitter.
+Before fractional timing, hardware reception at 66 kBd (actual 66 115.7 Bd), 8PSK 2/3, short frames, recovered a continuous run of 197 BBFRAMEs from a 20-second HackRF recording:
 1380 transport packets passed their CRC-8 checks, with no continuity errors, and the exported video and audio decoded without errors. SDRangel reception
 was also confirmed at 66 kBd and 1 MBd. The spectrum measurements below cover 8PSK from 33 kBd to 1 MBd.
 
 | requested 8PSK rate | samples per symbol | CPU cycles per DAC store | DAC update rate | actual symbol rate |
 |---|---|---|---|---|
 | 125 000 Bd | 64 | 20 | 8 MS/s | 125 000 Bd |
-| 66 000 Bd | 44 | 55 | 2.909 MS/s | 66 116 Bd |
-| 33 000 Bd | 64 | 76 | 2.105 MS/s | 32 895 Bd |
+| 66 000 Bd | 32 | 75/76 | 2.112 MS/s | 66 000 Bd average |
+| 33 000 Bd | 64 | 75/76 | 2.112 MS/s | 33 000 Bd average |
+
+The 33/66 kBd spectrum plots below were recorded with the earlier integer timing (32 895/66 116 Bd, 64/44 samples per symbol);
+their raw measurements and DAC image offsets describe that firmware version.
 
 Useful transport stream rate at 400 kBd, no pilots (multiply by 2.5 for 1 MBd: 3/5 1780 kb/s, 2/3 1981, 3/4 2228, 5/6 2479, 8/9 2646, 9/10 2679 kb/s in normal frames):
 
@@ -223,8 +234,9 @@ points, so they are sent as the outer ring points at the same angles (radius 1.1
   per symbol (0 mismatches). Timing: the three maintenance copies are exact (every store 20 cycles after the previous one), the normal copy
   has two pairs of slots (7/8 and 11/12) that run 21 and 19 cycles: one USB register access in them lands on a 48 MHz clock edge so that no
   amount of padding gives exactly 20; the pair adds up to 40, so the stream is on the grid again after it, and the symbol rate is exact as before.
-* **Narrowband 8PSK** (`tx_p8_c` in `main/main.c`). The same span-8 RRC tables and nibble-packed symbols, with 16 to 64 samples per symbol at a DAC store
-  every 55 or more CPU cycles. Every 2048 symbols the loop reports the ring fill to the host: checking the transmit FIFO, writing the four report bytes,
+* **Narrowband 8PSK** (`tx_p8_c` in `main/main.c`). The same span-8 RRC tables and nibble-packed symbols, with 16 to 64 samples per symbol and rational
+  DAC deadlines separated by at least 75 CPU cycles. The fractional phase persists across symbols and reports; the loop uses only 32-bit additions,
+  a comparison, and a conditional subtraction for timing. Every 2048 symbols it reports the ring fill to the host: checking the transmit FIFO, writing the four report bytes,
   flushing and checking for host silence are spread across separate sample slots. The encoder thread retains a prepared block while its queue is full,
   preserving the coded stream when USB writes pause.
 * **8PSK at 1 MBd** (`main/lutg_p8s8.S`, `tools/gen_lutg_p8s8.py`, `PSK8T ... 1000000 8`). The generic loop needs 16 or more slots per symbol for

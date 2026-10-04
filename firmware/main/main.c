@@ -41,6 +41,7 @@
 #include "soc/usb_serial_jtag_struct.h"
 #include "heap_memory_layout.h"
 #include "soc/soc.h"
+#include "sample_clock.h"
 
 /* RF dump bank (ADC capture / DAC playback, librftest adctrig / dactrig):
  * data at 0x3FCB0000. Handing the bank to the RF block (0x600C1020) takes
@@ -474,16 +475,18 @@ static uint32_t tx_lutg(lutg_ctx_t *c, uint8_t *ring, const int32_t *T, uint32_t
     return n0 - c->nsym;
 }
 
-/* ------------------------------------------------------------ narrowband 8PSK (C loop with the cycle counter as the clock, any period of 55 cycles or more)
- * The assembly loops hold S table samples of every row, 1024 * S bytes of tables: 66 and 33 kBd would need 103 and 207 KB at 8 MS/s. Here the DAC is slower (about 3 MS/s,
- * S = 44 at 66 kBd or 64 at 33 kBd), so the tables fit, and the loop is plain C: the work of a slot (about 20 cycles, 35 in the slot that
- * decodes a symbol) fits into the period with room to spare, and a jitter of a few cycles in the time of a store is far below what a 90 kHz wide signal can show.
+/* ------------------------------------------------------------ narrowband 8PSK (C loop with rational cycle-counter deadlines, at least 75 cycles per sample)
+ * The assembly loops hold S table samples of every row, 1024 * S bytes of tables: 66 and 33 kBd would need about 121 and 242 KiB near 8 MS/s. Here the DAC is slower (2.112 MS/s,
+ * S = 32 at 66 kBd or 64 at 33 kBd), so the tables fit. A persistent remainder accumulator alternates floor/ceil cycle intervals;
+ * the average rate is the requested baud, with less than one cycle of deadline error. A minimum interval of 75 cycles leaves room
+ * for the accumulator, symbol decode, and USB work. The 8 MS/s assembly loops retain their fixed timing.
  * Tables as for the generic 8PSK loop (lut_build_p8, row pointer of group g = T + g * S * 64 + index, the next sample 64 words further); the ring holds one symbol per
  * nibble, the first symbol of a byte in the low nibble. In a recording build (LUTG_REC) the words of the first symbols go to rec. */
-static uint32_t IRAM_ATTR __attribute__((noinline)) tx_p8_c(lut_io_t *io, uint8_t *qb, const int32_t *T, uint32_t S, uint32_t period, uint32_t max_sym, uint32_t *rec) {
+static uint32_t IRAM_ATTR __attribute__((noinline)) tx_p8_c(lut_io_t *io, uint8_t *qb, const int32_t *T, uint32_t S, sample_clock_t clock, uint32_t max_sym, uint32_t *rec) {
     const uint32_t gs = 64u * S;                                     /* words from one group's tables to the next */
     const int32_t *r0 = T, *r1 = T + gs, *r2 = T + 2u * gs, *r3 = T + 3u * gs, *n0 = r0, *n1 = r1, *n2 = r2, *n3 = r3;
     uint32_t C = 0, qw = 0, qr = 0, under = 0, late = 0, nsym = 0, tn = ccount() + 20000u, qw_seen = 0, t_rx = ccount(), pops = 0;
+    uint32_t phase = 0;                                             /* continuous across symbols, maintenance, and cycle-counter wrap */
     bool have = false;
     uint32_t repw = 0, repn = 0;                                     /* report: four bytes plus a flush, each in a separate slot from USB RX */
 #ifdef LUTG_REC
@@ -497,7 +500,7 @@ static uint32_t IRAM_ATTR __attribute__((noinline)) tx_p8_c(lut_io_t *io, uint8_
             do { now = ccount(); } while ((int32_t)(now - tn) < 0);
             DAC_BUF[0] = word;
             late += (now - tn) > 8u;
-            tn += period;
+            tn += sample_clock_next(clock, &phase);
 #ifdef LUTG_REC
             if (rec && nsym < 12) rec[nsym * S + j] = word;
 #endif
@@ -557,7 +560,9 @@ out:
 static void tx_qpsk_lut(uint32_t fkhz, uint32_t baud_req, uint32_t sps, int32_t amp, uint32_t secs, int32_t ifm, int32_t target, int32_t dc4i, int32_t dc4q,
                         int32_t gq, int32_t phim, bool psk8, bool a16, uint32_t gamma100) {
     const uint32_t period = (CPU_HZ + baud_req * sps / 2) / (baud_req * sps);
-    const double baud = (double)CPU_HZ / ((double)period * sps), fso = (double)CPU_HZ / period;
+    const sample_clock_t clock = sample_clock_init(CPU_HZ, baud_req * sps);
+    const bool fractional = psk8 && period != 20 && sps >= LUTG_MIN_S && sps <= LUTG8_MAX_S && clock.period >= 75;
+    const double baud = fractional ? baud_req : (double)CPU_HZ / ((double)period * sps), fso = baud * sps;
     const double half_bw = baud * 1.35 / 2.0, lo_nom = fkhz * 1000.0, ifh = ifm * baud;
     const double sig_lo = lo_nom + (ifh < 0 ? ifh : 0) - half_bw, sig_hi = lo_nom + (ifh > 0 ? ifh : 0) + half_bw;
     if (period < 16) { say("ERR QPSKT period %lu cycles < 16 (baud * sps too high)\r\n", (unsigned long)period); return; }
@@ -574,9 +579,9 @@ static void tx_qpsk_lut(uint32_t fkhz, uint32_t baud_req, uint32_t sps, int32_t 
         say("ERR A16T 16APSK needs 8 MS/s with %d..%d samples per symbol (baud * sps = 8 MHz, i.e. %lu .. %lu Bd)\r\n", LUTA16_MIN_S, LUTA16_MAX_S, (unsigned long)(8000000 / LUTA16_MAX_S), (unsigned long)(8000000 / LUTA16_MIN_S));
         return;
     }
-    const bool p8c = psk8 && !fastg && sps >= LUTG_MIN_S && sps <= LUTG8_MAX_S && period >= 55;      /* narrowband 8PSK: C loop at 3 MS/s or less (a slot of 48 cycles is already late in the slot that decodes a symbol: 55 leaves a margin) */
+    const bool p8c = fractional;                                    /* narrowband 8PSK: minimum floor interval includes accumulator overhead */
     if (psk8 && !fastg && !p8c) {
-        say("ERR PSK8T 8PSK needs 8 MS/s with 8 or %d..%d samples per symbol (baud * sps = 8 MHz, i.e. 1000000 or %lu .. %lu Bd), or %d..%d samples per symbol at 55 or more cycles each (baud * sps <= 2.9 MHz)\r\n", LUTG_MIN_S, LUTG8_MAX_S, (unsigned long)(8000000 / LUTG8_MAX_S), (unsigned long)(8000000 / LUTG_MIN_S), LUTG_MIN_S, LUTG8_MAX_S);
+        say("ERR PSK8T 8PSK needs 8 MS/s with 8 or %d..%d samples per symbol, or %d..%d samples per symbol with a minimum interval of 75 cycles (baud * sps <= 2.13 MHz)\r\n", LUTG_MIN_S, LUTG8_MAX_S, LUTG_MIN_S, LUTG8_MAX_S);
         return;
     }
     if (!fast8 && !fastg && !p8c && sps != 4 && sps != 8 && sps != 16) {
@@ -615,7 +620,7 @@ static void tx_qpsk_lut(uint32_t fkhz, uint32_t baud_req, uint32_t sps, int32_t 
     esp_rom_delay_us(3000);
     DAC_BUF[0] = 0;
     usb_drain_rx();
-    say("OK QPSKT LO %.0f BAUD %.3f OUT %.0f AMP %ld SPS %lu PERIOD %lu IF %.0f TARGET %ld MOD %s\r\n", lo_hz, baud, fso, (long)amp, (unsigned long)sps, (unsigned long)period, ifh, (long)target, a16 ? "16APSK" : psk8 ? "8PSK" : "QPSK");
+    say("OK QPSKT LO %.0f BAUD %.3f OUT %.0f AMP %ld SPS %lu PERIOD %lu IF %.0f TARGET %ld MOD %s REM %lu DIV %lu\r\n", lo_hz, baud, fso, (long)amp, (unsigned long)sps, (unsigned long)(p8c ? clock.period : period), ifh, (long)target, a16 ? "16APSK" : psk8 ? "8PSK" : "QPSK", (unsigned long)(p8c ? clock.remainder : 0), (unsigned long)(p8c ? clock.divisor : 1));
     lut_io_t io = {0};
 #ifdef LUTG_REC
     esp_rom_delay_us(150000);                                        /* time for the host to put bytes into the USB FIFO (exercises the read slots) */
@@ -638,7 +643,7 @@ static void tx_qpsk_lut(uint32_t fkhz, uint32_t baud_req, uint32_t sps, int32_t 
     wr(DAC_CTRL, 0x80000u | 1u);
     wr(DAC_CTRL, 0x80000u | 1u | (1u << 31));
     const uint32_t n = fast8 ? tx_lut8(&c8, ring, T, max_sym)
-               : p8c ? tx_p8_c(&io, ring, T, sps, period, max_sym, rec)
+               : p8c ? tx_p8_c(&io, ring, T, sps, clock, max_sym, rec)
                : fastg ? tx_lutg(&cg, ring, T, sps, period, max_sym, mper, rec, psk8, a16)
                : sps == 4 ? tx_sym_lut_4(&io, ring, (const uint8_t *)T, period, max_sym, target == 0)
                      : sps == 8 ? tx_sym_lut_8(&io, ring, (const uint8_t *)T, period, max_sym, target == 0)

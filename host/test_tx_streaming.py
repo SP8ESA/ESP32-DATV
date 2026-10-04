@@ -3,7 +3,7 @@ import queue
 import threading
 import unittest
 
-from tx_dvbs import auto_sps_8psk, feed_symbols
+from tx_dvbs import CPU_HZ, P8_MIN_PERIOD, auto_sps_8psk, feed_symbols, output_baud
 
 
 class ObservedQueue(queue.Queue):
@@ -80,14 +80,21 @@ class StreamingTests(unittest.TestCase):
         self.assertEqual(enc.blocks, [])
 
     def test_low_8psk_rates_select_supported_firmware_periods(self):
-        for baud, expected_sps in [(10000, 64), (33000, 64), (66000, 44), (125000, 64), (500000, 16), (1000000, 8)]:
+        for baud, expected_sps in [(10000, 64), (33000, 64), (66000, 32), (125000, 64), (500000, 16), (1000000, 8)]:
             with self.subTest(baud=baud):
                 sps = auto_sps_8psk(baud)
                 self.assertEqual(sps, expected_sps)
-                period = (160000000 + baud * sps // 2) // (baud * sps)
-                actual = 160000000 / (period * sps)
-                self.assertLessEqual(abs(actual / baud - 1), 0.005)
-                self.assertTrue(period == 20 or period >= 55)
+                period = (CPU_HZ + baud * sps // 2) // (baud * sps)
+                self.assertEqual(output_baud(baud, sps, "8psk"), baud)
+                self.assertTrue(period == 20 or CPU_HZ // (baud * sps) >= P8_MIN_PERIOD)
+
+    def test_fixed_assembly_rates_keep_their_existing_rounding(self):
+        self.assertEqual(output_baud(333000, 24, "8psk"), 1_000_000 / 3)
+        self.assertAlmostEqual(output_baud(33000, 202, "qpsk"), 33003.300330)
+
+    def test_fractional_rate_matches_explicit_samples_per_symbol(self):
+        self.assertEqual(output_baud(33000, 48, "8psk"), 33000)
+        self.assertEqual(output_baud(66000, 24, "8psk"), 66000)
 
 
 if __name__ == "__main__":
