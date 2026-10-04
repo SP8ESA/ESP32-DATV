@@ -21,6 +21,7 @@ DVB-S2 instead of DVB-S (QPSK or 8PSK, normal or short frames, pilots optional):
   python3 tx_dvbs.py --freq 2402.000 --baud 500000 --dvbs2 --fec 2/3 [--frame short] [--pilots]
   python3 tx_dvbs.py --freq 2402.000 --baud 500000 --dvbs2 --mod 8psk --fec 2/3     (8PSK: 200..400 kBd clean, up to 500 kBd, code rates 3/5 .. 9/10)
   python3 tx_dvbs.py --freq 2402.000 --baud 1000000 --dvbs2 --mod 8psk --fec 3/5    (8PSK at 1 MBd: 3 bits per symbol on the USB link, 375 kB/s)
+  python3 tx_dvbs.py --freq 2402.000 --baud 400000 --dvbs2 --mod 16apsk --fec 2/3   (16APSK: 333..500 kBd, code rates 2/3 .. 9/10; needs an SNR of 12..16 dB at the receiver)
   Receiver: DVB-S2, QPSK or 8PSK, the same symbol rate, code rate, roll-off 0.35.
 
 Amateur radio use only, within the limits of your licence. The firmware refuses frequencies outside 2300..2450 MHz.
@@ -153,6 +154,14 @@ def auto_sps(baud):
     return 16 if baud * 16 <= 4_000_000 else 8 if baud * 8 <= 4_000_000 else 4
 
 
+def auto_sps_16apsk(baud):
+    """16APSK runs only in lutg_a16.S: 16..24 samples per symbol at 8 MS/s, i.e. 333 .. 500 kBd (the rate within 1 %)."""
+    sps = round(CPU_HZ / (20 * baud))
+    if 16 <= sps <= 24 and abs(CPU_HZ / (20 * sps) / baud - 1) <= 0.01:
+        return sps
+    raise SystemExit(f"16APSK: --baud must be {CPU_HZ // 20 // 24} .. {CPU_HZ // 20 // 16} Bd with 8 MS/s / baud a whole number of samples (e.g. 500000, 444444, 400000, 333333)")
+
+
 def auto_sps_8psk(baud):
     """8PSK runs only at 8 MS/s: the generic loop (lutg_psk8.S) with 16..40 samples per symbol, i.e. 200..500 kBd, the rate within 1 %, and the
     dedicated 1 MBd loop (lutg_p8s8.S, 8 samples per symbol, 3 bits per symbol on the USB link)."""
@@ -179,7 +188,8 @@ def main():
     ap.add_argument("--baud", type=int, default=1000000, help="symbol rate [Bd], 2000..1000000 (e.g. 33000 for narrow-band DATV)")
     ap.add_argument("--fec", default="1/2", help="code rate: DVB-S 1/2 2/3 3/4 5/6 7/8; with --dvbs2 1/4 1/3 2/5 1/2 3/5 2/3 3/4 4/5 5/6 8/9 9/10 (short frames: no 9/10)")
     ap.add_argument("--dvbs2", action="store_true", help="DVB-S2 instead of DVB-S")
-    ap.add_argument("--mod", default="qpsk", choices=("qpsk", "8psk"), help="DVB-S2 modulation (8PSK: code rates 3/5 2/3 3/4 5/6 8/9 9/10, 200..500 kBd at 8 MS/s, clean up to 400 kBd)")
+    ap.add_argument("--mod", default="qpsk", choices=("qpsk", "8psk", "16apsk"),
+                    help="DVB-S2 modulation (8PSK: code rates 3/5 2/3 3/4 5/6 8/9 9/10, 200..500 kBd and 1 MBd; 16APSK: code rates 2/3 3/4 4/5 5/6 8/9 9/10, 333..500 kBd)")
     ap.add_argument("--frame", default="normal", choices=("normal", "short"), help="DVB-S2 FECFRAME size (normal 64800 bits, short 16200)")
     ap.add_argument("--pilots", action="store_true", help="DVB-S2 pilots (36 symbols after every 16 slots)")
     ap.add_argument("--sps", type=int, default=0, help="DAC samples per symbol (4, 8, 16, or 16..232 when baud * sps is 8 or 6.67 MHz); 0 = automatic: the hand-scheduled 8 / 6.67 MS/s loops when they fit the symbol rate, else the most that keeps the output at or below 4 MS/s")
@@ -204,19 +214,19 @@ def main():
     a = ap.parse_args()
     if not esp_link.BAND[0] <= a.freq <= esp_link.BAND[1]:
         raise SystemExit("transmission only in the 13 cm band (2300..2450 MHz)")
-    if a.mod == "8psk" and not a.dvbs2:
-        raise SystemExit("--mod 8psk needs --dvbs2")
+    if a.mod != "qpsk" and not a.dvbs2:
+        raise SystemExit(f"--mod {a.mod} needs --dvbs2")
     if not a.amp:
-        a.amp = 400 if a.mod == "8psk" else 300
+        a.amp = 420 if a.mod != "qpsk" else 300                        # 8PSK and 16APSK: the tables are scaled to the worst case, so more than QPSK's 300 fits; above ~430 the output compresses (skirts up, no more signal)
     if not a.sps:
-        a.sps = auto_sps_8psk(a.baud) if a.mod == "8psk" else auto_sps(a.baud)
+        a.sps = auto_sps_16apsk(a.baud) if a.mod == "16apsk" else auto_sps_8psk(a.baud) if a.mod == "8psk" else auto_sps(a.baud)
     if not a.target:
-        a.target = 6000 if a.mod == "8psk" and a.sps == 8 else 3000
+        a.target = 6000 if a.mod == "8psk" and a.sps == 8 else 2500 if a.mod == "16apsk" else 3000      # 16APSK: the ESP's ring is 8 KB (4064 pairs)
     period = round(CPU_HZ / (a.baud * a.sps))
     baud_act = CPU_HZ / (period * a.sps)
-    if a.mod == "8psk" and 420000 < baud_act < 1000000:
-        print("note: 8PSK above 400 kBd needs about as many bytes per second as the USB link to the ESP delivers (about 260 kB/s): the ESP buffer runs dry now and then "
-              "and the receiver sees short drop-outs; 400 kBd and below are clean")
+    if a.mod in ("8psk", "16apsk") and 460000 < baud_act < 1000000:
+        print(f"note: {a.mod.upper()} at {baud_act / 1e3:.0f} kBd needs {baud_act / 2e3:.0f} kB/s over the USB link to the ESP, which carries about 262 kB/s at the ESP's read rate: "
+              "watch the 'ESP buffer' lines, if it runs dry the receiver sees short drop-outs (lower the symbol rate)")
     if abs(baud_act / a.baud - 1) > 0.01:
         print(f"note: {a.sps} samples per symbol give {baud_act:.1f} Bd, not {a.baud}")
     if_hz = round(a.ifm * baud_act)
@@ -240,7 +250,9 @@ def main():
     link = esp_link.Link(esp_link.find_port(a.port))
     try:
         secs = int(a.seconds) + 30 if a.seconds else 86400
-        info = link.start(f"{'PSK8T' if a.mod == '8psk' else 'QPSKT'} {khz / 1000:.3f} {a.baud} {a.sps} {a.amp} {secs} {a.ifm} {a.target} {dc4[0]} {dc4[1]} {gq} {ph}")
+        cmd = {"8psk": "PSK8T", "16apsk": "A16T"}.get(a.mod, "QPSKT")
+        gam = f" {round(100 * dvbs2.APSK16_GAMMA[a.fec])}" if a.mod == "16apsk" else ""         # ring ratio R2 / R1 x 100 of the code rate
+        info = link.start(f"{cmd} {khz / 1000:.3f} {a.baud} {a.sps} {a.amp} {secs} {a.ifm} {a.target} {dc4[0]} {dc4[1]} {gq} {ph}{gam}")
         kv = dict(zip(info.split()[2::2], info.split()[3::2]))
         lo_true = float(kv["LO"]) * (1 + a.ppm * 1e-6)
         std = f"DVB-S2 {a.mod.upper()} {a.frame} frame{', pilots' if a.pilots else ''}" if a.dvbs2 else "DVB-S"
@@ -257,7 +269,7 @@ def main():
         def feeder():
             while not stop_enc.is_set():
                 try:
-                    ready.put(b"\x00" * 4096 if a.cw and a.mod == "8psk" else b"\xFF" * 4096 if a.cw else enc.encode(src.take(8)), timeout=0.1)     # 0xFF = four QPSK symbols (+1, +1) / 0x00 = two 8PSK symbols (1, 0): a carrier
+                    ready.put(b"\x00" * 4096 if a.cw and a.mod != "qpsk" else b"\xFF" * 4096 if a.cw else enc.encode(src.take(8)), timeout=0.1)     # 0xFF = four QPSK symbols (+1, +1) / 0x00 = two 8PSK symbols (1, 0): a carrier
                 except queue.Full:
                     pass
 

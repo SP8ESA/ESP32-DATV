@@ -2,6 +2,7 @@
 """Tunes the nop pads of the generated lutg loops with the timing build (gen_lutg.py --rec timing, #define LUTG_REC 1 in main.c).
 
   python3 tools/lutg_tune.py --psk8 [--sps 24 --baud 333333] [--junk 0] [--rounds 8]      (from firmware/, IDF exported, ESP on the USB port)
+  python3 tools/lutg_tune.py --a16 [--sps 24 --baud 333333]                                  (the 16APSK loop, gen_lutg_a16.py, tools/lutg_a16_pads.json)
 
 One round = generate lutg*.S with the current pads, build, flash, run PSK8T / QPSKT, read "T<k> <copy>: slot:spacing ... | E x" (only the
 slots whose spacing differs from the period are listed), and move the pad of the slot by (period - spacing). The pads of the unrolled slots
@@ -25,9 +26,9 @@ def run(cmd, **kw):
     return subprocess.run(cmd, cwd=FW, capture_output=True, text=True, **kw)
 
 
-def gen(psk8):
-    out = os.path.join(FW, "main", "lutg_psk8.S" if psk8 else "lutg.S")
-    r = run(["python3", "tools/gen_lutg.py", "--rec", "timing"] + (["--psk8"] if psk8 else []))
+def gen(psk8, a16=False):
+    out = os.path.join(FW, "main", "lutg_a16.S" if a16 else "lutg_psk8.S" if psk8 else "lutg.S")
+    r = run(["python3", "tools/gen_lutg_a16.py" if a16 else "tools/gen_lutg.py", "--rec", "timing"] + (["--psk8"] if psk8 and not a16 else []))
     if r.returncode:
         sys.exit(r.stderr)
     open(out, "w").write(r.stdout)
@@ -55,6 +56,7 @@ def key(c, j, sps):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--psk8", action="store_true")
+    ap.add_argument("--a16", action="store_true")
     ap.add_argument("--sps", type=int, default=24)
     ap.add_argument("--baud", type=int, default=333333)
     ap.add_argument("--junk", type=int, default=0)
@@ -62,17 +64,17 @@ def main():
     ap.add_argument("--port", default="/dev/ttyACM0")
     ap.add_argument("--period", type=int, default=20)
     a = ap.parse_args()
-    padfile = os.path.join(HERE, "lutg_psk8_pads.json" if a.psk8 else "lutg_pads.json")
-    usedfile = os.path.join(HERE, "lutg_psk8_pads_used.json" if a.psk8 else "lutg_pads_used.json")
+    padfile = os.path.join(HERE, "lutg_a16_pads.json" if a.a16 else "lutg_psk8_pads.json" if a.psk8 else "lutg_pads.json")
+    usedfile = os.path.join(HERE, "lutg_a16_pads_used.json" if a.a16 else "lutg_psk8_pads_used.json" if a.psk8 else "lutg_pads_used.json")
     P = str(a.period)
     allp = json.load(open(padfile)) if os.path.exists(padfile) else {}
     pads = allp.get(P) or {k: v for k, v in json.load(open(usedfile))[P].items() if not k.endswith("_cost")}
-    cmd = f"{'PSK8T' if a.psk8 else 'QPSKT'} 2370.000 {a.baud} {a.sps} 300 5 0 0"
+    cmd = f"A16T 2370.000 {a.baud} {a.sps} 300 5 0 0 0 0 10000 0 315" if a.a16 else f"{'PSK8T' if a.psk8 else 'QPSKT'} 2370.000 {a.baud} {a.sps} 300 5 0 0"
     seen, targets, accept = {}, {}, {}
     for rnd in range(a.rounds):
         allp[P] = pads
         json.dump(allp, open(padfile, "w"), indent=0, sort_keys=True)
-        warn = gen(a.psk8)
+        warn = gen(a.psk8, a.a16)
         flash(a.port)
         text = measure(cmd, a.junk, a.port)
         off, es = {}, set()

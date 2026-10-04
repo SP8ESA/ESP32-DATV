@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""DVB-S2 encoder (ETSI EN 302 307) for the ESP32-DATV transmitter: MPEG transport stream -> QPSK symbols.
+"""DVB-S2 encoder (ETSI EN 302 307) for the ESP32-DATV transmitter: MPEG transport stream -> QPSK, 8PSK or 16APSK symbols.
 
-Scope: QPSK (all code rates: normal 1/4 ... 9/10, short 1/4 ... 8/9) and 8PSK (3/5 ... 9/10, short without 9/10), normal (64800 bit) and
-short (16200 bit) FECFRAMEs, CCM, one transport stream, roll-off 0.35 (the ESP filters), pilots on or off (16APSK / 32APSK are not possible
-with the ESP's modulator).
-Chain: mode adaptation (CRC-8 in the sync byte position, BBHEADER) -> BB scrambler -> BCH -> LDPC -> bit interleaver (8PSK) -> mapping ->
+Scope: QPSK (all code rates: normal 1/4 ... 9/10, short 1/4 ... 8/9), 8PSK (3/5 ... 9/10, short without 9/10) and 16APSK (2/3 ... 9/10, short
+without 9/10), normal (64800 bit) and short (16200 bit) FECFRAMEs, CCM, one transport stream, roll-off 0.35 (the ESP filters), pilots on or off
+(32APSK is not possible with the ESP's modulator).
+Chain: mode adaptation (CRC-8 in the sync byte position, BBHEADER) -> BB scrambler -> BCH -> LDPC -> bit interleaver (8PSK, 16APSK) -> mapping ->
 PLHEADER (SOF + PLSCODE, pi/2 BPSK) -> pilots -> PL scrambler (Gold code 0).
 Output for QPSK: every symbol is one of four points, the same packed stream as dvbs.py: 4 symbols per byte, bit 0 = I level, bit 1 = Q
 level (1 = +1), first symbol in the low bits. Output for 8PSK: every symbol is one of eight points e^(j pi k / 4), k = 0..7 (the angle in
-45 degree steps), 2 symbols per byte, the first one in the low nibble.
+45 degree steps), 2 symbols per byte, the first one in the low nibble. Output for 16APSK: the DVB-S2 bit quadruple v = 0..15 (the index of the
+point in the constellation table of gr-dtv: v 0..11 on the outer ring, 12..15 on the inner one), 2 symbols per byte, low nibble first. The 16 points
+are the whole alphabet: the header and the pilots (unit radius at 45 degrees + k 90 degrees) are sent as the outer ring points at the same angles
+(radius r2 = 1.11 .. 1.14 instead of 1), which a receiver correlating the phase of the header does not mind.
 
 dvbs2_ldpc.json holds the LDPC parity address tables of the standard (annex B and C): for every group of 360 information bits the
 addresses of the parity bits it is added to. They were read out of an independent encoder (gr-dtv) by encoding unit vectors, and the
@@ -34,15 +37,44 @@ SHORT = {"1/4": (3072, 12), "1/3": (5232, 12), "2/5": (6312, 12), "1/2": (7032, 
 PARAMS = {"normal": NORMAL, "short": SHORT}
 MODCOD = {"1/4": 1, "1/3": 2, "2/5": 3, "1/2": 4, "3/5": 5, "2/3": 6, "3/4": 7, "4/5": 8, "5/6": 9, "8/9": 10, "9/10": 11}
 MODCOD_8PSK = {"3/5": 12, "2/3": 13, "3/4": 14, "5/6": 15, "8/9": 16, "9/10": 17}
+MODCOD_16APSK = {"2/3": 18, "3/4": 19, "4/5": 20, "5/6": 21, "8/9": 22, "9/10": 23}
+# 16APSK: ratio R2 / R1 of the outer and the inner ring (4 + 12 points) for every code rate (EN 302 307 table 9)
+APSK16_GAMMA = {"2/3": 3.15, "3/4": 2.85, "4/5": 2.75, "5/6": 2.70, "8/9": 2.60, "9/10": 2.57}
 FEC_RATES = list(NORMAL)
-BITS = {"qpsk": 2, "8psk": 3}
+BITS = {"qpsk": 2, "8psk": 3, "16apsk": 4}
 # 8PSK: DVB-S2 bit triple (b0 b1 b2) -> angle index k (the point e^(j pi k / 4)); read out of gr-dtv's modulator
 PSK8_K = (1, 0, 4, 5, 2, 7, 3, 6)
+
+
+# 16APSK: the bit quadruple v (b0 the most significant) -> the point, as in gr-dtv (radius normalised to a mean power of 1)
+APSK16_ANGLE = np.radians([45, -45, 135, -135, 15, -15, 165, -165, 75, -75, 105, -105, 45, -45, 135, -135])
+
+
+def apsk16_points(fec):
+    """The 16 constellation points (complex) of a code rate: v 0..11 on the outer ring, 12..15 on the inner one."""
+    g = APSK16_GAMMA[fec]
+    r1 = 4.0 / np.sqrt(4.0 + 12.0 * g * g)
+    r = np.where(np.arange(16) < 12, g * r1, r1)
+    return r * np.exp(1j * APSK16_ANGLE)
+
+
+def _apsk16_map(f):
+    """The permutation v -> v' of the 16 points for a symmetry f of the constellation (computed on the points of any code rate)."""
+    z = apsk16_points("2/3")
+    return np.array([int(np.argmin(np.abs(z - f(z[v])))) for v in range(16)], np.uint8)
+
+
+APSK16_ROT = _apsk16_map(lambda z: z * 1j)                 # a quarter turn (the PL scrambler)
+APSK16_CONJ = _apsk16_map(lambda z: np.conj(z))             # Q -> -Q
+APSK16_SWAP = _apsk16_map(lambda z: 1j * np.conj(z))        # I <-> Q (the angle becomes 90 degrees minus the angle)
+APSK16_HDR = {1: 0, 3: 2, 5: 3, 7: 1}                       # (1+j)/sqrt2 times j^m, in units of 45 degrees -> the outer ring point at that angle
 
 
 def rates(mod="qpsk", frame="normal"):
     """The code rates that exist for this modulation and frame size."""
     r = list(PARAMS[frame])
+    if mod == "16apsk":
+        return [x for x in r if x in MODCOD_16APSK]
     return [x for x in r if x in MODCOD_8PSK] if mod == "8psk" else r
 NULL_PACKET = bytes([0x47, 0x1F, 0xFF, 0x10]) + b"\xFF" * 184
 
@@ -50,7 +82,7 @@ NULL_PACKET = bytes([0x47, 0x1F, 0xFF, 0x10]) + b"\xFF" * 184
 def frame_info(fec, frame="normal", pilots=False, mod="qpsk"):
     """k_bch, t, n_ldpc, bits of the data field (DFL) and symbols of the PLFRAME."""
     if mod not in BITS:
-        raise ValueError("modulation: qpsk, 8psk")
+        raise ValueError("modulation: qpsk, 8psk, 16apsk")
     if frame not in PARAMS or fec not in rates(mod, frame):
         raise ValueError(f"DVB-S2 {mod.upper()} {frame} frame: FEC {', '.join(rates(mod, frame))}")
     kbch, t = PARAMS[frame][fec]
@@ -274,13 +306,14 @@ class Encoder:
         self.pend = np.zeros(0, np.uint8)               # symbols that do not fill a byte yet
         self.stream = bytearray()                       # user packets with the sync byte replaced by the CRC-8 of the previous one
         self.pos = 0                                    # stream byte number of stream[0]
-        self.hdr = np.array(SOF + plscode((MODCOD_8PSK if mod == "8psk" else MODCOD)[fec], frame == "short", pilots), np.uint8)
+        self.hdr = np.array(SOF + plscode({"8psk": MODCOD_8PSK, "16apsk": MODCOD_16APSK}.get(mod, MODCOD)[fec], frame == "short", pilots), np.uint8)
         # pi/2 BPSK header symbols: even index (1+j)/sqrt2, odd index (-1+j)/sqrt2, times (1 - 2 b)
         even = np.arange(90) % 2 == 0
         a = 1 - 2 * self.hdr.astype(np.int8)
         self.hdr_i = np.where(even, a, -a).astype(np.int8)
         self.hdr_q = a.astype(np.int8)
         self.hdr_k = np.array([{(1, 1): 1, (-1, 1): 3, (-1, -1): 5, (1, -1): 7}[(int(i), int(q))] for i, q in zip(self.hdr_i, self.hdr_q)], np.uint8)
+        self.hdr_v = np.array([APSK16_HDR[int(k)] for k in self.hdr_k], np.uint8)       # 16APSK: the header on the outer ring
 
     @property
     def packets_per_frame(self):
@@ -373,6 +406,39 @@ class Encoder:
         q = s[:2 * nb].reshape(nb, 2)
         return (q[:, 0] | q[:, 1] << 4).astype(np.uint8).tobytes()
 
+    def plframe16(self, bb):
+        """16APSK: BBFRAME bytes -> the PLFRAME as bit quadruples v (the index of the point, see apsk16_points)."""
+        par = self.bch.parity(bb)
+        cw = self.ldpc.encode(np.unpackbits(np.frombuffer(bb + par, np.uint8)))
+        c = cw.reshape(4, len(cw) // 4)                  # bit interleaver: written by columns, read by rows
+        v = (c[0] << 3 | c[1] << 2 | c[2] << 1 | c[3]).astype(np.uint8)
+        if self.pilots:                                  # 36 pilot symbols (1+j)/sqrt2 = the outer ring point at 45 degrees (v 0) after every 16 slots
+            slots = len(v) // 90
+            parts = []
+            for s0 in range(0, slots, 16):
+                e = min(s0 + 16, slots)
+                parts.append(v[90 * s0:90 * e])
+                if e < slots:
+                    parts.append(np.zeros(36, np.uint8))
+            v = np.concatenate(parts)
+        r = rotation(len(v)).astype(np.int16)            # PL scrambler: a quarter turn per unit of R
+        for _ in range(3):
+            v = np.where(r > 0, APSK16_ROT[v], v)
+            r = np.maximum(r - 1, 0)
+        return np.concatenate((self.hdr_v, v)).astype(np.uint8)
+
+    def pack16(self, v):
+        """16APSK point indices -> bytes, two symbols per byte, the first in the low nibble; an odd symbol waits for the next frame."""
+        if self.invert:
+            v = APSK16_CONJ[v]
+        if self.swap_iq:
+            v = APSK16_SWAP[v]
+        s = np.concatenate((self.pend, v.astype(np.uint8)))
+        nb = len(s) // 2
+        self.pend = s[2 * nb:]
+        q = s[:2 * nb].reshape(nb, 2)
+        return (q[:, 0] | q[:, 1] << 4).astype(np.uint8).tobytes()
+
     def pack(self, si, sq):
         """+-1 symbols -> packed bytes (I level in bit 0, Q level in bit 1 of every 2 bit symbol); a PLFRAME is not a whole number
         of bytes, so up to 3 symbols wait for the next frame."""
@@ -392,7 +458,9 @@ class Encoder:
         self.push(ts)
         out = []
         while self.ready():
-            if self.mod == "8psk":
+            if self.mod == "16apsk":
+                out.append(self.pack16(self.plframe16(self.bbframe())))
+            elif self.mod == "8psk":
                 out.append(self.pack8(self.plframe8(self.bbframe())))
             else:
                 out.append(self.pack(*self.plframe(self.bbframe())))
@@ -418,6 +486,7 @@ def _golden_ts():
 
 GOLDEN = {('normal', '1/2', False): 'b6e638f7edd4f2f0', ('normal', '3/4', True): '0d3788b63e1cdb7d', ('short', '2/3', False): '7a12e0b7f21f23e2', ('short', '1/4', True): 'fad3eb819a6cd97a'}
 GOLDEN_8PSK = {('normal', '2/3', True): '181d2d8334e78f7b', ('short', '3/5', False): '85f75b336f7d6f59'}
+GOLDEN_16APSK = {('normal', '3/4', True): '260bd1c3ef9eda78', ('short', '2/3', False): '4c9f2fa994176bcf'}
 
 
 def selftest():
@@ -476,6 +545,10 @@ def selftest():
         got = hashlib.sha256(Encoder(fec, frame, pil, mod="8psk").frames(_golden_ts())).hexdigest()[:16]
         ok &= got == want
         print(f"golden 8PSK {frame} {fec} pilots {int(pil)}: {got} {'ok' if got == want else 'DIFFERENT, expected ' + want}")
+    for (frame, fec, pil), want in GOLDEN_16APSK.items():
+        got = hashlib.sha256(Encoder(fec, frame, pil, mod="16apsk").frames(_golden_ts())).hexdigest()[:16]
+        ok &= got == want
+        print(f"golden 16APSK {frame} {fec} pilots {int(pil)}: {got} {'ok' if got == want else 'DIFFERENT, expected ' + want}")
     print("self-test", "passed" if ok else "FAILED")
     return ok
 

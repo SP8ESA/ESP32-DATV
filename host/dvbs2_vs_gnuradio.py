@@ -2,7 +2,10 @@
 """Compares dvbs2.py with the DVB-S2 transmitter of GNU Radio (gr-dtv) stage by stage: BBFRAME, BB scrambler, BCH, LDPC, QPSK mapping,
 PLFRAME (header, pilots, PL scrambler). Needs GNU Radio 3.10 with gr-dtv; only for development.
 
-  python3 dvbs2_vs_gnuradio.py [normal|short [fec [pilots [qpsk|8psk]]]]     (no arguments: a set of QPSK and 8PSK modes)
+  python3 dvbs2_vs_gnuradio.py [normal|short [fec [pilots [qpsk|8psk|16apsk]]]]     (no arguments: a set of QPSK, 8PSK and 16APSK modes)
+
+16APSK: the header and the pilots are sent on the outer ring (radius r2, not 1), so the PLFRAME is compared on the data symbols exactly and on the
+header and pilot symbols by their phase only.
 """
 import sys
 
@@ -18,7 +21,7 @@ FRAMES = {"normal": dtv.FECFRAME_NORMAL, "short": dtv.FECFRAME_SHORT}
 
 def gr_chain(ts, fec, frame, pilots, upto, mod="qpsk"):
     fs, r = FRAMES[frame], RATES[fec]
-    gmod = dtv.MOD_8PSK if mod == "8psk" else dtv.MOD_QPSK
+    gmod = {"8psk": dtv.MOD_8PSK, "16apsk": dtv.MOD_16APSK}.get(mod, dtv.MOD_QPSK)
     tb = gr.top_block()
     src = blocks.vector_source_b(list(ts), False)
     order = [dtv.dvb_bbheader_bb(dtv.STANDARD_DVBS2, fs, r, dtv.RO_0_35, dtv.INPUTMODE_NORMAL, dtv.INBAND_OFF, 0, 0),
@@ -59,7 +62,12 @@ def compare(fec, frame, pilots, npk=240, nframes=2, mod="qpsk"):
         mine["bch"].append(bchbits)
         cw = e.ldpc.encode(bchbits)
         mine["ldpc"].append(cw)
-        if mod == "8psk":
+        if mod == "16apsk":
+            c4 = cw.reshape(4, len(cw) // 4)
+            pts = dvbs2.apsk16_points(fec)
+            mine["mod"].append(pts[(c4[0] << 3 | c4[1] << 2 | c4[2] << 1 | c4[3]).astype(np.uint8)])
+            mine["phys"].append(pts[e.plframe16(bb)])
+        elif mod == "8psk":
             cols = cw.reshape(3, len(cw) // 3)
             c = cols[::-1] if fec == "3/5" else cols
             kk = np.array(dvbs2.PSK8_K)[c[0] << 2 | c[1] << 1 | c[2]]
@@ -78,7 +86,23 @@ def compare(fec, frame, pilots, npk=240, nframes=2, mod="qpsk"):
         if stage == "phys":
             g = g[0::2]                                         # gr-dtv zero-stuffs the PLFRAME by two
         n = min(len(m), len(g))
-        if stage in ("mod", "phys"):
+        if stage == "phys" and mod == "16apsk":
+            # data symbols exactly; header (90 symbols) and pilots (36 after every 16 slots): the phase
+            nd = len(m) // nframes
+            mask = np.zeros(nd, bool)
+            mask[:90] = True
+            if pilots:
+                slots = (64800 if frame == "normal" else 16200) // 4 // 90
+                pos = 90
+                for s0 in range(0, slots, 16):
+                    e0 = min(s0 + 16, slots)
+                    pos += 90 * (e0 - s0)
+                    if e0 < slots:
+                        mask[pos:pos + 36] = True
+                        pos += 36
+            mask = np.tile(mask, nframes)[:n]
+            good = np.allclose(g[:n][~mask], m[:n][~mask], atol=1e-5) and np.allclose(np.angle(g[:n][mask]), np.angle(m[:n][mask]), atol=1e-5)
+        elif stage in ("mod", "phys"):
             good = np.allclose(g[:n], m[:n], atol=1e-5)
         else:
             good = np.array_equal(g[:n].astype(np.uint8), m[:n])
@@ -100,6 +124,8 @@ if __name__ == "__main__":
                  ("9/10", "normal", False), ("1/4", "short", False), ("1/2", "short", True), ("8/9", "short", False)]
         modes += [(f, fr, p, 240, 2, "8psk") for f, fr, p in (("3/5", "normal", False), ("2/3", "normal", True), ("5/6", "normal", False), ("9/10", "normal", True),
                                                               ("3/5", "short", True), ("8/9", "short", False))]
+        modes += [(f, fr, p, 240, 2, "16apsk") for f, fr, p in (("2/3", "normal", False), ("3/4", "normal", True), ("4/5", "normal", False), ("5/6", "normal", True),
+                                                                ("8/9", "normal", False), ("9/10", "normal", True), ("2/3", "short", True), ("8/9", "short", False))]
     good = all([compare(*m) for m in modes])
     print("ALL MATCH" if good else "MISMATCH")
     sys.exit(0 if good else 1)

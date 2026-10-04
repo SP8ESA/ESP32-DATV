@@ -7,3 +7,4 @@ firmware/tools/lut8_pads_used.json
 firmware/tools/lutg_pads_used.json
 firmware/tools/lutg_psk8_pads_used.json
 firmware/tools/lutg_p8s8_pads_used.json
+firmware/tools/lutg_a16_pads_used.json

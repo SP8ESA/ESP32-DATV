@@ -2,7 +2,7 @@
 
 # ESP32-DATV
 
-**A DVB-S and DVB-S2 digital amateur TV transmitter in a bare ESP32-C3: QPSK from 1 Msymbol/s down to 33 ksymbol/s (DVB-S2 also 8PSK, 200 to 500 ksymbol/s and 1 Msymbol/s) in the 13 cm band, no RF hardware added.**
+**A DVB-S and DVB-S2 digital amateur TV transmitter in a bare ESP32-C3: QPSK from 1 Msymbol/s down to 33 ksymbol/s (DVB-S2 also 8PSK, 200 to 500 ksymbol/s and 1 Msymbol/s, and 16APSK, 333 to 500 ksymbol/s) in the 13 cm band, no RF hardware added.**
 
 ![Spectrum of the transmitted DVB-S signal](docs/spectrum.png)
 
@@ -13,8 +13,8 @@ one is about 6 dB lower, and much lower still at the narrower symbol rates (see 
 
 The ESP32-C3's Wi-Fi transmitter has an I/Q modulator and a 10-bit I/Q DAC feeding it. This project drives that DAC directly
 from the CPU at 8 mega-samples per second (6.67 MS/s for the two lowest symbol rates), so the chip itself produces a
-root-raised-cosine QPSK (or, for DVB-S2, 8PSK) signal on 2.4 GHz. A PC
-encodes an MPEG transport stream to DVB-S (energy dispersal, Reed-Solomon, interleaver, convolutional code) or to DVB-S2 QPSK or 8PSK (BBFRAME,
+root-raised-cosine QPSK (or, for DVB-S2, 8PSK or 16APSK) signal on 2.4 GHz. A PC
+encodes an MPEG transport stream to DVB-S (energy dispersal, Reed-Solomon, interleaver, convolutional code) or to DVB-S2 QPSK, 8PSK or 16APSK (BBFRAME,
 BCH, LDPC, physical layer framing, optional pilots) and streams the symbols over USB; the ESP does the pulse shaping and the output.
 The demo film in `media/` plays on a normal DVB-S receiver.
 
@@ -24,13 +24,14 @@ The demo film in `media/` plays on a normal DVB-S receiver.
 
 | Path | What |
 |---|---|
-| `firmware/` | ESP-IDF project, transmit only (`main/main.c`, `main/qpsk_lut.h`, `main/lut8.S`, `main/lutg.S`, `main/lutg_psk8.S`, `main/lutg_p8s8.S`) |
+| `firmware/` | ESP-IDF project, transmit only (`main/main.c`, `main/qpsk_lut.h`, `main/lut8.S`, `main/lutg.S`, `main/lutg_psk8.S`, `main/lutg_p8s8.S`, `main/lutg_a16.S`) |
 | `firmware/tools/gen_lut8.py` | Generates `main/lut8.S`, the hand-scheduled 8 MS/s loop for 1 MBd, from `lut8_pads.json` (per-slot padding) |
 | `firmware/tools/gen_lutg.py` | Generates `main/lutg.S`, the hand-scheduled loop for all the other rates (any samples per symbol, 8 or 6.67 MS/s), from `lutg_pads.json` |
 | `firmware/tools/lutg_tune.py` | Tunes the padding of the generated loops with the timing build (`gen_lutg.py --rec timing`); `gen_lutg.py --psk8` generates `main/lutg_psk8.S`, the 8PSK variant, from `lutg_psk8_pads.json` |
 | `firmware/tools/gen_lutg_p8s8.py`, `lutg_tune_p8s8.py` | Generate `main/lutg_p8s8.S`, the 8PSK loop for 1 MBd (own generator: 8 samples per symbol, a pass of 8 symbols, 3 bit symbols), from `lutg_p8s8_pads.json`, and tune its padding with the timing build |
+| `firmware/tools/gen_lutg_a16.py` | Generates `main/lutg_a16.S`, the 16APSK loop (any 16 to 24 samples per symbol at 8 MS/s, RRC span 6, 4 bit symbols), from `lutg_a16_pads.json`; `lutg_tune.py --a16` tunes its padding |
 | `host/dvbs.py` | DVB-S encoder, TS to QPSK symbols (EN 300 421, all code rates 1/2 ... 7/8), with a self-test |
-| `host/dvbs2.py`, `host/dvbs2_ldpc.json` | DVB-S2 encoder, TS to QPSK and 8PSK symbols (EN 302 307: normal and short frames, all QPSK and 8PSK code rates, pilots), with a self-test; the LDPC tables of the standard |
+| `host/dvbs2.py`, `host/dvbs2_ldpc.json` | DVB-S2 encoder, TS to QPSK, 8PSK and 16APSK symbols (EN 302 307: normal and short frames, all QPSK, 8PSK and 16APSK code rates, pilots), with a self-test; the LDPC tables of the standard |
 | `host/dvbs2_vs_gnuradio.py` | Compares the DVB-S2 encoder with GNU Radio's gr-dtv stage by stage (development only) |
 | `host/tx_dvbs.py` | The transmitter script: transport stream source (demo film, any video, test pattern, stdin) or an unmodulated carrier, DVB-S or DVB-S2 encoder, USB streaming |
 | `host/tx_qpsk_test.py` | Random-symbol QPSK test for looking at the spectrum |
@@ -90,8 +91,8 @@ python3 tx_qpsk_test.py --seconds 60                    # plain random QPSK, for
 ```
 
 Useful options: `--baud` (2000 ... 1000000, e.g. 33000 for narrow-band DATV: picture size, frame rate and audio shrink with
-the channel), `--fec 1/2|2/3|3/4|5/6|7/8`, `--amp` (peak DAC code, default 300, max 480; lower
-it if the output is compressed), `--ifm N` (centre = LO + N x baud, moves the LO leakage out of the signal), `--sps` (samples per
+the channel), `--fec 1/2|2/3|3/4|5/6|7/8`, `--amp` (peak DAC code, default 300 for QPSK and 420 for 8PSK and 16APSK, max 480; above
+about 430 the output compresses, see [Amplitude](#amplitude)), `--ifm N` (centre = LO + N x baud, moves the LO leakage out of the signal), `--sps` (samples per
 symbol, normally chosen for you), `--cw` (carrier only), `--ppm`.
 
 **Set `--ppm` for your board.** The PLL assumes an exact 40 MHz crystal, and real crystals are off by some ppm (about +12 ppm
@@ -105,9 +106,10 @@ python3 tx_dvbs.py --freq 2402.000 --baud 500000 --dvbs2 --fec 2/3              
 python3 tx_dvbs.py --freq 2402.000 --baud 125000 --dvbs2 --fec 3/4 --frame short --pilots
 python3 tx_dvbs.py --freq 2402.000 --baud 400000 --dvbs2 --mod 8psk --fec 2/3             # DVB-S2, 8PSK 2/3
 python3 tx_dvbs.py --freq 2402.000 --baud 1000000 --dvbs2 --mod 8psk --fec 3/5            # DVB-S2, 8PSK at 1 MBd
+python3 tx_dvbs.py --freq 2402.000 --baud 500000 --dvbs2 --mod 16apsk --fec 2/3            # DVB-S2, 16APSK 2/3
 ```
 
-DVB-S2: the receiver needs the same symbol rate, the modulation (QPSK or 8PSK), the code rate, roll-off 0.35 (it is signalled in the stream), and the
+DVB-S2: the receiver needs the same symbol rate, the modulation (QPSK, 8PSK or 16APSK), the code rate, roll-off 0.35 (it is signalled in the stream), and the
 frame size and pilots are detected from the physical layer header. Normal frames are 64800 bits, short frames 16200 bits (shorter
 latency at narrow symbol rates: a normal frame is 1 s long at 33 kBd, a short one 0.25 s); pilots are 36 symbols after every 16
 slots, they cost 2.2-2.4 % of the rate and help a receiver to track the carrier. Useful transport stream rate at 1 MBd, no pilots (it scales with
@@ -140,13 +142,35 @@ Useful transport stream rate at 400 kBd, no pilots (multiply by 2.5 for 1 MBd: 3
 | 8/9 | 1058 kb/s | 1031 kb/s |
 | 9/10 | 1072 kb/s | - |
 
-The PC sends 8PSK as two symbols per byte (one nibble each), i.e. 250 kB/s at 500 kBd, and the USB link to the ESP carries about
-260 kB/s. At 500 kBd the ESP's buffer therefore hardly fills and runs dry now and then (short drop-outs at the receiver; `tx_dvbs.py` warns above
-400 kBd); at 400 kBd and below the buffer stays at its target. At 1 MBd the symbols travel as a bit stream, 3 bits each (375 kB/s; the nibbles would
+The PC sends 8PSK and 16APSK as two symbols per byte (one nibble each), i.e. 250 kB/s at 500 kBd. The ESP reads one USB byte per symbol, and the
+USB link carries (64 byte packets, the chip's FIFO is drained byte by byte by the CPU) about 262 kB/s at that read rate: 500 kBd is the edge. With the
+host encoding ahead of the writes (below) the ESP's buffer held its level for 16APSK at 500 kBd, and at 444 kBd and below the margin grows (the reads come
+less often but the link needs less). `tx_dvbs.py` notes the edge for 8PSK above 420 kBd. At 1 MBd the symbols travel as a bit stream, 3 bits each (375 kB/s; the nibbles would
 need 500 kB/s), and the link has to be kept busy: the Linux USB serial driver takes about one write at a time, so a loop that encodes and writes
 alternately delivered 360 kB/s and the ESP ran dry 6 % of the time; `tx_dvbs.py` encodes in its own thread, ahead of the writes, and the link then
 carries 420-430 kB/s (the ring stays at its target of 6000 pairs). 16APSK and 32APSK are not possible (the loop looks up two symbols at a time and
 those constellations have too many points). The picture size, frame rate and audio of the demo stream follow the channel capacity as in DVB-S.
+
+**16APSK** (`--mod 16apsk`): code rates 2/3, 3/4, 4/5, 5/6, 8/9 and 9/10 (short frames: no 9/10), 333 to 500 kBd (8 MS/s with 16 to 24 samples per symbol;
+`--baud 500000`, `444444`, `400000`, `333333`). Useful transport stream rate at 500 kBd, no pilots (scales with the symbol rate):
+
+| code rate | normal frame | short frame |
+|---|---|---|
+| 2/3 | 1319 kb/s | 1274 kb/s |
+| 3/4 | 1483 kb/s | 1405 kb/s |
+| 4/5 | 1583 kb/s | 1492 kb/s |
+| 5/6 | 1650 kb/s | 1579 kb/s |
+| 8/9 | 1762 kb/s | 1709 kb/s |
+| 9/10 | 1784 kb/s | - |
+
+The two rings (4 + 12 points) have a radius ratio that depends on the code rate (2.57 to 3.15, the standard's table); the receiver needs the modulation
+and the code rate, nothing else. A 16APSK receiver needs a better signal than for 8PSK: the standard's thresholds are Es/N0 9 dB (2/3) to 13 dB (9/10) with an ideal
+receiver, and a real one needs several dB more (SDRangel's DATV demodulator needed its soft LDPC option for 8PSK 3/5 at MER 12 dB). The default
+amplitude is `--amp 420` (the tables are scaled to the worst case, so the lower mean power of the higher order modulations leaves room above QPSK's 300; more
+than about 430 only compresses the output, see [Amplitude](#amplitude)); the rest has to come from the receive level: MER above 15 dB. The RRC filter of the 16APSK loop is truncated to 6 symbols (the tables of
+256 rows per group of two symbols would take 80 KB with 8): the first sidelobe region is about 4 dB higher than with 8 symbols (-31 dB instead of -35 dB per bin
+relative to the signal) and the far skirt about 10 dB. The header and the pilots of the PL frame have radius 1 in the standard; the alphabet of the loop is the 16
+points, so they are sent as the outer ring points at the same angles (radius 1.11 to 1.14), which the receivers tried here do not notice.
 
 ## How it works
 
@@ -197,13 +221,22 @@ those constellations have too many points). The picture size, frame rate and aud
   (`tools/lutg_tune_p8s8.py`, a fixed start phase of the loop against the 48 MHz USB clock): every store is 20 cycles after the previous one, a few
   USB slots 19 (never 21), the sync never late, and the DAC words match the reference model on the PC (`host/test_lutg_words.c -p8s8`, 0 mismatches,
   all slots of both copies).
+* **16APSK** (`main/lutg_a16.S`, `tools/gen_lutg_a16.py`, `A16T` command). The structure of the generic loop (unrolled slots, a 1-slot loop, the measuring slot, a
+  sync sled, four code copies) with 4 bit symbols (one nibble of the ring, point index v = 0..15 of the DVB-S2 mapping) and an RRC filter truncated to 6
+  symbols = three tables of 256 rows (two symbols of 4 bits each), so the tables take 3072 x S bytes (48 KB at 500 kBd, 74 KB at 333 kBd, the most the heap
+  holds). A table is stored row by row, the row pointer is base + index x 4 x S (one `mul`), and the next sample of a row is 4 bytes further, so the immediates of the
+  unrolled slots stay small. The ring is 8 KB (the ESP allocates the tables first, then the ring that the mode needs, on every run). The
+  RAM is the limit of this mode: the heap functions live in flash (`CONFIG_HEAP_PLACE_FUNCTION_INTO_FLASH`) and the Wi-Fi buffer pools are at their minimum (`sdkconfig.defaults`:
+  the Wi-Fi only brings up the PHY), which leaves 86 KB in the biggest block of the heap for the tables (74 KB at 333 kBd) and the ring. The command takes a last argument, gamma x 100 (the ring ratio of the code rate), for the
+  tables. The DAC words match the reference model (`host/test_lutg_words.c -a16`) at 16, 20 and 24 samples per symbol with no mismatch; the padding was tuned with
+  the recording build (`lutg_tune.py --a16`): the slots are 20 cycles apart, apart from a pair of USB slots at 21 and 19 in the normal copy.
 * **Scheduling (C loops).** Two symbols per loop pass, with the per-symbol work (decode, table row pointers, USB read, ring refill)
   spread over the slots so that no sample slot overruns its period. USB (a 64-byte FIFO, each register read costs ~12
   cycles from compiled code) is touched at most once per slot.
 * **USB protocol.** Text command `QPSKT f_MHz baud sps [amp [seconds [ifm [target [dcI dcQ [g phi]]]]]]`, then a **raw
   symbol stream**, 4 symbols per byte (bit 0 = I level, bit 1 = Q level, 1 = +1, first symbol in the low bits), no framing.
   `PSK8T` takes the same arguments but 2 symbols per byte (low nibble first, value 0..7 = angle index); at 1 MBd (8 samples per symbol) 3 bits per
-  symbol, a bit stream (8 symbols = 3 bytes).
+  symbol, a bit stream (8 symbols = 3 bytes). `A16T` takes the same arguments plus gamma x 100 (R2 / R1 of the 16APSK rings), 2 symbols per byte (one nibble: the point index).
   `target` = 0 makes the ESP generate random symbols itself (not in the 8 / 6.67 MS/s loops). The ESP returns 4-byte fill reports (`B7`, fill lo/hi, underruns)
   every 256 pairs; the PC keeps the ring about 3000 pairs (about 24 ms) full. A silent host for 0.5 s switches the
   transmitter off.
@@ -253,7 +286,13 @@ Everything below is on one board (ESP32-C3 rev 0.4, 40 MHz crystal), with a Hack
   stream packet it returned was exact (1700 to 2800 packets per normal frame run). (3) The loop on the chip: the DAC words recorded from the
   firmware agree with the reference model, and the tables with a floating-point RRC filter (SNR 47.6 dB, 47.8 dB at 8 samples per symbol, `host/test_lut.c -p`).
   (4) Over the air, through a cable and an attenuator into SDRangel's DVB-S2 demodulator: the author decoded 8PSK at 400 kBd and at 1 MBd, FEC 3/5, normal
-  frames; at 1 MBd 3/5 only with SDRangel's soft LDPC option switched on (the hard-decision decoder did not lock). Not measured here: the MER of the signal.
+  frames; at 1 MBd 3/5 only with SDRangel's soft LDPC option switched on (the hard-decision decoder did not lock). The MER at the receiver was 12 dB at first and
+  20 dB later in the session (`--amp 400`, then 480; the tinySA shows only 0.6 dB more output at 480, so the receive side changed as well, and 480 compresses).
+* **DVB-S2 16APSK.** (1) Against gr-dtv (`host/dvbs2_vs_gnuradio.py`): bit interleaver, mapping and the whole PLFRAME match in every mode tried (normal and short frames,
+  2/3 to 9/10, pilots on and off; the header and pilots by their phase, they are sent on the outer ring), plus golden hashes in the self-test. (2) SatDump on simulated
+  baseband (RRC 0.35, 24 dB Es/N0, 4 samples per symbol), normal frames at every code rate and short frames at 2/3, 3/4 and 8/9: every transport stream packet it returned
+  was exact. (3) The loop on the chip: the DAC words match the reference model (S = 16, 20, 24, 0 mismatches). (4) Over the air, through a cable and an attenuator into
+  SDRangel's DVB-S2 demodulator: the author decoded 16APSK 2/3 at 400 kBd (normal frames, no pilots).
 * All symbol rates, tinySA Ultra+ with the transmitter connected through an attenuator, 30 passes averaged in power, 2370 MHz.
   The strongest image of the zero-order-hold DAC output sits at +-f(DAC) (8 MHz, 6.67 MHz for 66 and 33 kBd). Level in one 30 kHz
   bin relative to the same bin at the top of the signal, both sides:
@@ -314,6 +353,65 @@ of the carrier itself.
 
 ![QPSK 33 kS/s](docs/spectrum_33kBd.png)
 
+### DVB-S2 8PSK
+
+The same measurement for DVB-S2 8PSK (FEC 3/5, `--amp 300`, null packets only, which the scrambler and the LDPC code turn into the same kind of random symbols):
+tinySA Ultra+ through an attenuator, centre 2370 MHz, 30 passes averaged in power, 30 MHz span at RBW 30 kHz and a zoom of about six symbol rates (RBW 10 kHz,
+3 kHz at 250 and 200 kBd), every panel relative to its own top. The aliases are the zero-order-hold images of the DAC, so they are the same as for QPSK at the same symbol rate:
+
+| symbol rate | 8PSK alias at +-8 MHz | QPSK alias |
+|---|---|---|
+| 1 MBd | -28 dB | -27 dB |
+| 500 kBd | -34 dB | -34 dB |
+| 400 kBd | -36 dB | - |
+| 333 kBd | -38 dB | -37 dB |
+| 250 kBd | -41 dB | -41 dB |
+| 200 kBd | -43 dB | - |
+
+### 8PSK, 1 MBd (8 samples per symbol, `lutg_p8s8.S`): alias -28 dB
+
+![8PSK 1 MS/s](docs/spectrum_8PSK_1MBd.png)
+
+### 8PSK, 500 kBd (16 samples per symbol): alias -34 dB
+
+![8PSK 500 kS/s](docs/spectrum_8PSK_500kBd.png)
+
+### 8PSK, 400 kBd (20 samples per symbol): alias -36 dB
+
+![8PSK 400 kS/s](docs/spectrum_8PSK_400kBd.png)
+
+### 8PSK, 333 kBd (24 samples per symbol, 333 333 Bd): alias -38 dB
+
+![8PSK 333 kS/s](docs/spectrum_8PSK_333kBd.png)
+
+### 8PSK, 250 kBd (32 samples per symbol): alias -41 dB
+
+![8PSK 250 kS/s](docs/spectrum_8PSK_250kBd.png)
+
+### 8PSK, 200 kBd (40 samples per symbol): alias -43 dB
+
+![8PSK 200 kS/s](docs/spectrum_8PSK_200kBd.png)
+
+### Amplitude
+
+The tables are scaled so that the worst case of the filtered signal reaches `--amp` DAC codes; the real peaks of 8PSK and 16APSK are lower than for QPSK, so
+a higher `--amp` than QPSK's 300 fits, until the output compresses (before the power amplifier, at every PA setting). Measured at 500 kBd, 8PSK 3/5 and 16APSK
+2/3, mean level 0.4 to 0.7 MHz from the centre relative to the top of the signal:
+
+| `--amp` | 8PSK signal top | 8PSK next to the signal | 16APSK signal top | 16APSK next to the signal |
+|---|---|---|---|---|
+| 340 | -14.2 dBm | -46.8 dB | -14.7 dBm | -42.3 dB |
+| 380 | -13.2 dBm | -45.9 dB | -13.5 dBm | -42.0 dB |
+| 420 | -12.6 dBm | -45.8 dB | -13.2 dBm | -41.3 dB |
+| 450 | -12.0 dBm | -43.6 dB | -12.6 dBm | -39.9 dB |
+| 480 | -11.6 dBm | -39.0 dB | -12.1 dBm | -36.8 dB |
+
+(dBm as the analyzer reads them, behind the attenuator.) The level next to the signal is flat up to about 420, then rises: at 480 it is 7 dB (8PSK) and 5 dB (16APSK)
+higher while the signal itself gains only 1 dB since 420. The aliases do not depend on the amplitude (-34 dB at 300, 400 and 480). The default for 8PSK and 16APSK is
+therefore `--amp 420`. (The shoulder of 16APSK next to the signal is higher than 8PSK's by about 4 dB at every amplitude: its RRC filter is truncated to 6 symbols.)
+
+![Amplitude](docs/amplitude_500kBd.png)
+
 ## Limitations
 
 * Tested on the air with a HackRF One and the independent leandvb decoder (lock, VBER 0, MER about 20-25 dB): **1 MBd, 500, 333,
@@ -324,7 +422,7 @@ of the carrier itself.
   (+-6.67 MHz at 66 and 33 kBd), 27 dB (1 MBd) to 59 dB (33 kBd) below the signal in a 30 kHz bin, and the carrier's own noise forms
   a skirt about 35-40 dB below the signal level per bin. Add a band-pass filter and/or attenuation as your licence and
   local rules require.
-* DVB-S2: QPSK and 8PSK only (no 16APSK / 32APSK), 8PSK only at 200 to 500 kBd and 1 MBd, constant coding and modulation (one MODCOD for the whole stream, no ACM), one transport stream, roll-off 0.35
+* DVB-S2: QPSK, 8PSK and 16APSK only (no 32APSK), 8PSK only at 200 to 500 kBd and 1 MBd, 16APSK only at 333 to 500 kBd, constant coding and modulation (one MODCOD for the whole stream, no ACM), one transport stream, roll-off 0.35
   (the filter in the ESP), no input stream synchronisation (ISSY) or null packet deletion, no dummy PLFRAMEs (the stream is always
   padded with null packets). Short frames have no 9/10.
 * Transmit only, and only in the 13 cm band: the firmware refuses to transmit outside 2300..2450 MHz.

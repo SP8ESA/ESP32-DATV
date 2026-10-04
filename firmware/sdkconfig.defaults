@@ -20,3 +20,6 @@ CONFIG_BOOTLOADER_LOG_LEVEL_NONE=y
 # CONFIG_ESP_WIFI_AMPDU_RX_ENABLED is not set
 # The 1 MBd 8PSK loop (lutg_p8s8.S) needs IRAM: keep the heap functions in flash (nothing allocates in an ISR here), so the heap below the RF dump bank stays big enough for the symbol ring.
 CONFIG_HEAP_PLACE_FUNCTION_INTO_FLASH=y
+# Wi-Fi only brings up the PHY (no frames are ever received): the smallest buffer pools keep about 14 KB of heap for the symbol tables and the ring
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=2
+CONFIG_ESP_WIFI_MGMT_SBUF_NUM=6
