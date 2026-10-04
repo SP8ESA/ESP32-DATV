@@ -160,5 +160,7 @@ out-of-band emissions increase.
 
 ## License
 
-[PolyForm Noncommercial 1.0.0](LICENSE). Copyright (c) 2026 SP8ESA.
-The Sintel trailer is by the Blender Foundation, [CC BY 3.0](media/README.md).
+[PolyForm Noncommercial License 1.0.0](LICENSE): you may use, modify and share this software for any noncommercial purpose,
+including hobby, amateur radio, research and education. Commercial use is not permitted. The demo film has its own licence (CC BY 3.0).
+
+Copyright (c) 2026 SP8ESA
