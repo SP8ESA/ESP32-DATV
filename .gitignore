@@ -2,6 +2,7 @@ firmware/build/
 firmware/sdkconfig
 firmware/sdkconfig.old
 __pycache__/
+.venv/
 *.pyc
 firmware/tools/lut8_pads_used.json
 firmware/tools/lutg_pads_used.json
