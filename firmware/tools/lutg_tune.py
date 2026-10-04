@@ -2,7 +2,7 @@
 """Tunes the nop pads of the generated lutg loops with the timing build (gen_lutg.py --rec timing, #define LUTG_REC 1 in main.c).
 
   python3 tools/lutg_tune.py --psk8 [--sps 24 --baud 333000] [--junk 0] [--rounds 8]      (from firmware/, IDF exported, ESP on the USB port)
-  python3 tools/lutg_tune.py --a16 [--sps 24 --baud 333333]                                  (the 16APSK loop, gen_lutg_a16.py, tools/lutg_a16_pads.json)
+  python3 tools/lutg_tune.py --a16 [--sps 24 --baud 333000]                                  (the 16APSK loop, gen_lutg_a16.py, tools/lutg_a16_pads.json)
 
 One round = generate lutg*.S with the current pads, build, flash, run PSK8T / QPSKT, read "T<k> <copy>: slot:spacing ... | E x" (only the
 slots whose spacing differs from the period are listed), and move the pad of the slot by (period - spacing). The pads of the unrolled slots

@@ -3,7 +3,7 @@ import queue
 import threading
 import unittest
 
-from tx_dvbs import CPU_HZ, P8_MIN_PERIOD, auto_sps_8psk, feed_symbols, output_baud
+from tx_dvbs import CPU_HZ, P8_MIN_PERIOD, A16_MIN_PERIOD, auto_sps_8psk, auto_sps_16apsk, feed_symbols, output_baud
 
 
 class ObservedQueue(queue.Queue):
@@ -89,15 +89,33 @@ class StreamingTests(unittest.TestCase):
                 self.assertTrue(period == 20 or CPU_HZ // (baud * sps) >= P8_MIN_PERIOD)
 
     def test_generic_assembly_averages_standard_symbol_rates(self):
-        for modulation in ("qpsk", "8psk"):
+        for modulation in ("qpsk", "8psk", "16apsk"):
             self.assertEqual(output_baud(333000, 24, modulation), 333000)
         self.assertEqual(output_baud(33000, 202, "qpsk"), 33000)
         self.assertEqual(output_baud(66000, 101, "qpsk"), 66000)
         self.assertEqual(output_baud(500000, 16, "8psk"), 500000)
 
     def test_other_paths_keep_their_existing_rounding(self):
-        self.assertEqual(output_baud(333000, 24, "16apsk"), 1_000_000 / 3)
         self.assertEqual(output_baud(33000, 16, "qpsk"), CPU_HZ / (303 * 16))
+
+    def test_16apsk_standard_rates_fit_the_selected_clock(self):
+        rates = [(500000, 16), (400000, 20), (333000, 24),
+                 (250000, 8), (200000, 10), (125000, 16), (66000, 24), (33000, 24)]
+        for baud, expected_sps in rates:
+            with self.subTest(baud=baud):
+                sps = auto_sps_16apsk(baud)
+                self.assertEqual(sps, expected_sps)
+                self.assertEqual(output_baud(baud, sps, "16apsk"), baud)
+                period = (CPU_HZ + baud * sps // 2) // (baud * sps)
+                self.assertTrue(period == 20 or CPU_HZ // (baud * sps) >= A16_MIN_PERIOD)
+
+    def test_16apsk_explicit_sampling_and_boundaries(self):
+        self.assertEqual(output_baud(66000, 16, "16apsk"), 66000)
+        self.assertEqual(output_baud(444444, 18, "16apsk"), 444444)
+        self.assertEqual(auto_sps_16apsk(2000), 24)
+        for baud in [0, 1999, 500001, 1000000]:
+            with self.subTest(baud=baud), self.assertRaises(SystemExit):
+                auto_sps_16apsk(baud)
 
     def test_fractional_rate_matches_explicit_samples_per_symbol(self):
         self.assertEqual(output_baud(33000, 48, "8psk"), 33000)

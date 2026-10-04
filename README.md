@@ -2,7 +2,7 @@
 
 # ESP32-DATV
 
-**A DVB-S and DVB-S2 digital amateur TV transmitter in a bare ESP32-C3: QPSK from 1 Msymbol/s down to 33 ksymbol/s (DVB-S2 also 8PSK, about 10 to 500 ksymbol/s and 1 Msymbol/s, and 16APSK, 333 to 500 ksymbol/s) in the 13 cm band, no RF hardware added.**
+**A DVB-S and DVB-S2 digital amateur TV transmitter in a bare ESP32-C3: QPSK from 1 Msymbol/s down to 33 ksymbol/s (DVB-S2 also 8PSK, about 10 to 500 ksymbol/s and 1 Msymbol/s, and 16APSK, about 2 to 500 ksymbol/s) in the 13 cm band, no RF hardware added.**
 
 ![Spectrum of the transmitted DVB-S signal](docs/spectrum.png)
 
@@ -78,7 +78,7 @@ symbol boundary gives the requested average rate. The script picks the number of
 
 Any other `--baud` that gives 16..232 samples per symbol within 1 % of the requested rate at one of the two periods (100 000 Bd = 80
 samples at 20 cycles, say) uses the same loop; the rest runs on the C loops at up to 4 MS/s. The script prints the resulting symbol rate.
-The generic QPSK/8PSK assembly loops average the symbol duration when `floor(160000000 / baud) == samples_per_symbol * period`;
+The generic QPSK/8PSK/16APSK assembly loops average the symbol duration when `floor(160000000 / baud) == samples_per_symbol * period`;
 rates farther from this grid still use the integer rate. At 333 kBd, the accumulator schedules 173 symbols of 480 cycles and 160 symbols
 of 481 cycles in each 333-symbol block: exactly 160000 CPU cycles, or 1 ms at the nominal 160 MHz clock. This adds at most one cycle
 (6.25 ns) to the symbol boundary; the accumulator runs across USB reports and cycle-counter wrap. The crystal's frequency error remains.
@@ -116,6 +116,8 @@ python3 tx_dvbs.py --freq 2402.000 --baud 400000 --dvbs2 --mod 8psk --fec 2/3   
 python3 tx_dvbs.py --freq 2402.000 --baud 1000000 --dvbs2 --mod 8psk --fec 3/5            # DVB-S2, 8PSK at 1 MBd
 python3 tx_dvbs.py --freq 2402.000 --baud 33000 --dvbs2 --mod 8psk --fec 2/3 --frame short # narrowband 8PSK, average 33 000 Bd
 python3 tx_dvbs.py --freq 2402.000 --baud 500000 --dvbs2 --mod 16apsk --fec 2/3            # DVB-S2, 16APSK 2/3
+python3 tx_dvbs.py --freq 2402.000 --baud 333000 --dvbs2 --mod 16apsk --fec 2/3 --frame short # average 333 000 Bd
+python3 tx_dvbs.py --freq 2402.000 --baud 33000 --dvbs2 --mod 16apsk --fec 2/3 --frame short  # narrowband 16APSK
 ```
 
 DVB-S2: the receiver needs the same symbol rate, the modulation (QPSK, 8PSK or 16APSK), the code rate, roll-off 0.35 (it is signalled in the stream), and the
@@ -179,14 +181,43 @@ Useful transport stream rate at 400 kBd, no pilots (multiply by 2.5 for 1 MBd: 3
 The PC sends 8PSK and 16APSK as two symbols per byte (one nibble each), i.e. 250 kB/s at 500 kBd. The ESP reads one USB byte per symbol, and the
 USB link carries (64 byte packets, the chip's FIFO is drained byte by byte by the CPU) about 262 kB/s at that read rate: 500 kBd is the edge. With the
 host encoding ahead of the writes (below) the ESP's buffer held its level for 16APSK at 500 kBd, and at 444 kBd and below the margin grows (the reads come
-less often but the link needs less). `tx_dvbs.py` notes the edge for 8PSK above 420 kBd. At 1 MBd the symbols travel as a bit stream, 3 bits each (375 kB/s; the nibbles would
+less often but the link needs less). `tx_dvbs.py` notes the edge at the higher symbol rates. At 1 MBd, 8PSK symbols travel as a bit stream, 3 bits each (375 kB/s; the nibbles would
 need 500 kB/s), and the link has to be kept busy: the Linux USB serial driver takes about one write at a time, so a loop that encodes and writes
 alternately delivered 360 kB/s and the ESP ran dry 6 % of the time; `tx_dvbs.py` encodes in its own thread, ahead of the writes, and the link then
-carries 420-430 kB/s (the ring stays at its target of 6000 pairs). 16APSK and 32APSK are not possible (the loop looks up two symbols at a time and
-those constellations have too many points). The picture size, frame rate and audio of the demo stream follow the channel capacity as in DVB-S.
+carries 420-430 kB/s (the ring stays at its target of 6000 pairs). The 1 MBd 8PSK loop supports three-bit symbols; 16APSK uses its own loops.
+The picture size, frame rate and audio of the demo stream follow the channel capacity as in DVB-S.
 
-**16APSK** (`--mod 16apsk`): code rates 2/3, 3/4, 4/5, 5/6, 8/9 and 9/10 (short frames: no 9/10), 333 to 500 kBd (8 MS/s with 16 to 24 samples per symbol;
-`--baud 500000`, `444444`, `400000`, `333333`). Useful transport stream rate at 500 kBd, no pilots (scales with the symbol rate):
+**16APSK** (`--mod 16apsk`): code rates 2/3, 3/4, 4/5, 5/6, 8/9 and 9/10 (short frames: no 9/10), about 2 to 500 kBd.
+The 333 to 500 kBd modes use the fast assembly loop with 16 to 24 samples per symbol. At 333 kBd the symbol clock alternates 480/481 CPU cycles,
+giving an average 333 000 Bd and a DAC rate of 7.992 MS/s. Lower rates use a C loop with 4 to 24 samples per symbol and at least 80 cycles per
+DAC deadline; a remainder accumulator gives the requested average sample and symbol rates. The span-6 RRC filter and the nibble-packed symbol
+format remain the same. These rates assume a nominal 160 MHz CPU clock; the crystal's frequency error remains.
+
+| requested 16APSK rate | samples per symbol | CPU cycles per DAC deadline | average DAC rate | average symbol rate |
+|---|---|---|---|---|
+| 500 000 Bd | 16 | 20 | 8 MS/s | 500 000 Bd |
+| 400 000 Bd | 20 | 20 | 8 MS/s | 400 000 Bd |
+| 333 000 Bd | 24 | 20, fractional symbol boundary | 7.992 MS/s | 333 000 Bd |
+| 250 000 Bd | 8 | 80 | 2 MS/s | 250 000 Bd |
+| 200 000 Bd | 10 | 80 | 2 MS/s | 200 000 Bd |
+| 125 000 Bd | 16 | 80 | 2 MS/s | 125 000 Bd |
+| 66 000 Bd | 24 | 101/102 | 1.584 MS/s | 66 000 Bd |
+| 33 000 Bd | 24 | 202/203 | 0.792 MS/s | 33 000 Bd |
+
+Checked on the ESP32-C3 at all eight rates above: 1,562 recorded DAC words matched the independently built RRC tables with zero mismatches.
+The video streaming checks (12 seconds per rate, DVB-S2 2/3 short frames) reported zero late sample slots with these SPS choices,
+and a nonempty buffer after startup (at least 1,400 pairs at 500 kBd, about 1,988 at the lower rates).
+The final underrun totals include startup and the host-silence tail after the test stops; these checks establish sample and USB timing,
+not successful RF decoding at every rate.
+Live SDRangel checks at 333, 500 and 66 kBd, with DVB-S2 16APSK 2/3 normal frames, reported video decoding and MER of approximately
+18.8, 19.0 and 17.6 dB respectively. RF reception at the other rates has not yet been verified.
+
+**1 MBd 16APSK is not supported by the current USB stream.** A two-sample prototype maintained its 80-cycle sample deadlines after
+specializing the clock and draining USB twice per symbol, but the input buffer still ran dry. Two 30-second video tests delivered about
+407 to 418 kB/s; a test without video encoding, with larger writes, reached about 423 kB/s. 16APSK needs 500 kB/s at 1 MBd.
+The host and firmware reject rates above 500 kBd, including when `--sps` is supplied, rather than producing a broken coded stream.
+
+Useful transport stream rate at 500 kBd, no pilots (scales with the symbol rate):
 
 | code rate | normal frame | short frame |
 |---|---|---|
@@ -270,6 +301,10 @@ points, so they are sent as the outer ring points at the same angles (radius 1.1
   the Wi-Fi only brings up the PHY), which leaves 86 KB in the biggest block of the heap for the tables (74 KB at 333 kBd) and the ring. The command takes a last argument, gamma x 100 (the ring ratio of the code rate), for the
   tables. The DAC words match the reference model (`host/test_lutg_words.c -a16`) at 16, 20 and 24 samples per symbol with no mismatch; the padding was tuned with
   the recording build (`lutg_tune.py --a16`): the slots are 20 cycles apart, apart from a pair of USB slots at 21 and 19 in the normal copy.
+  Fractional symbol timing reuses padding cycles, as in the QPSK/8PSK loops. At lower rates `tx_a16_c` uses the same row-major tables;
+  it computes the next row pointers in sample slot 0 and handles USB in slot 1. Fill reports and the silence check are spread over
+  eight consecutive symbols every 2048 symbols, so even small samples-per-symbol values have enough time for maintenance.
+  The C loop needs at least 80 CPU cycles per sample; 125 kBd therefore uses 16 samples per symbol at 2 MS/s.
 * **Scheduling (C loops).** Two symbols per loop pass, with the per-symbol work (decode, table row pointers, USB read, ring refill)
   spread over the slots so that no sample slot overruns its period. USB (a 64-byte FIFO, each register read costs ~12
   cycles from compiled code) is touched at most once per slot.
@@ -504,7 +539,7 @@ therefore `--amp 420`. (The shoulder of 16APSK next to the signal is higher than
   (+-6.67 MHz at 66 and 33 kBd), 27 dB (1 MBd) to 59 dB (33 kBd) below the signal in a 30 kHz bin, and the carrier's own noise forms
   a skirt about 35-40 dB below the signal level per bin. Add a band-pass filter and/or attenuation as your licence and
   local rules require.
-* DVB-S2: QPSK, 8PSK and 16APSK only (no 32APSK), 8PSK at about 10 to 500 kBd and 1 MBd (below 125 kBd the DAC is slower), 16APSK only at 333 to 500 kBd, constant coding and modulation (one MODCOD for the whole stream, no ACM), one transport stream, roll-off 0.35
+* DVB-S2: QPSK, 8PSK and 16APSK only (no 32APSK), 8PSK at about 10 to 500 kBd and 1 MBd (below 125 kBd the DAC is slower), 16APSK at about 2 to 500 kBd (slower DAC below 333 kBd; 1 MBd exceeds the measured USB throughput), constant coding and modulation (one MODCOD for the whole stream, no ACM), one transport stream, roll-off 0.35
   (the filter in the ESP), no input stream synchronisation (ISSY) or null packet deletion, no dummy PLFRAMEs (the stream is always
   padded with null packets). Short frames have no 9/10.
 * Transmit only, and only in the 13 cm band: the firmware refuses to transmit outside 2300..2450 MHz.

@@ -385,7 +385,7 @@ typedef struct {
     uint32_t ns[4];            /*  84: sled ends of the code copies (filled by the asm) */
     uint32_t sledrec;          /* 100 */
     uint32_t *rec, *recp;      /* 104, 108 */
-    uint32_t phase, rem, div; /* 112, 116, 120: persistent fractional symbol clock (generic QPSK/8PSK only) */
+    uint32_t phase, rem, div; /* 112, 116, 120: persistent fractional symbol clock */
 } lutg_ctx_t;
 _Static_assert(offsetof(lutg_ctx_t, ring) == 16 && offsetof(lutg_ctx_t, nsym) == 32 && offsetof(lutg_ctx_t, mper) == 40 && offsetof(lutg_ctx_t, trx) == 48 &&
                offsetof(lutg_ctx_t, lim) == 56 && offsetof(lutg_ctx_t, exitc) == 64 && offsetof(lutg_ctx_t, s64m) == 72 && offsetof(lutg_ctx_t, ns) == 84 &&
@@ -399,6 +399,8 @@ extern uint32_t lutg_a16_run_p20(lutg_ctx_t *c);                  /* 16APSK: 4 b
 #define LUTG8_MAX_S 64                                              /* 8PSK tables take 1024 * S bytes: 64 KB at S = 64 (125 kBd) next to the 16 KB ring is what the heap holds */
 #define LUTA16_MIN_S 16                                             /* 16APSK tables take 3072 * S bytes: 74 KB at S = 24 is all the heap holds */
 #define LUTA16_MAX_S 24
+#define LUTA16_C_MIN_S 4
+#define LUTA16_C_MIN_PERIOD 80u
 #define LUT_RING_A16 8192u
 #define LUTG8_S8 8
 #define LUTG_P8S8_PHASE 0       /* start phase of the 1 MBd 8PSK loop in cycles (mod 10), tools/lutg_tune_p8s8.py --secs N tunes the pads for phase N mod 10 */
@@ -565,19 +567,90 @@ out:
     return nsym;
 }
 
+/* Row-major 16APSK tables at a slower DAC rate. All six RRC symbols remain in the history.
+ * Symbol work is in slot 0 and USB/maintenance in slot 1.
+ * Reports are spread across eight successive symbols, so small SPS needs no long sample slot. */
+static uint32_t IRAM_ATTR __attribute__((noinline)) tx_a16_c(lut_io_t *io, uint8_t *qb, const int32_t *T, uint32_t S,
+                                                              sample_clock_t clock, uint32_t max_sym, uint32_t *rec) {
+    const uint32_t gs = 256u * S;
+    const int32_t *r0 = T, *r1 = T + gs, *r2 = T + 2u * gs, *n0 = r0, *n1 = r1, *n2 = r2;
+    uint32_t history = 0, qw = 0, qr = 0, under = 0, late = 0, nsym = 0;
+    uint32_t tn = ccount() + 20000u, phase = 0, qw_seen = 0, t_rx = ccount(), repw = 0;
+    bool reporting = false;
+#ifdef LUTG_REC
+    qw = LUT_RING_A16 - 128u;
+#endif
+    uint32_t word = ((uint32_t)*r0 + (uint32_t)*r1 + (uint32_t)*r2) ^ LUT_XOR;
+    for (;;) {
+        const uint32_t step = nsym & 2047u;
+        for (uint32_t j = 0; j < S; ++j) {
+            uint32_t now;
+            do { now = ccount(); } while ((int32_t)(now - tn) < 0);
+            DAC_BUF[0] = word;
+            late += now - tn > 8u;
+            tn += sample_clock_next(clock, &phase);
+#ifdef LUTG_REC
+            if (rec && nsym < LUTG_REC_SYMBOLS)
+                rec[nsym * S + j] = LUTG_REC == 1 ? now : word;
+#endif
+            if (j == 0u) {
+                uint32_t sym = 0;
+                if ((int32_t)(2u * qw - qr) > 0) {
+                    sym = (qb[(qr >> 1) & (LUT_RING_A16 - 1u)] >> ((qr & 1u) * 4u)) & 15u;
+                    ++qr;
+                } else ++under;
+                history = (history << 4) | sym;
+                n0 = T + (history & 255u) * S;
+                n1 = T + gs + ((history >> 8) & 255u) * S;
+                n2 = T + 2u * gs + ((history >> 16) & 255u) * S;
+            } else if (j == 1u) {
+                if (step >= 8u) {
+                    if (qw - (qr >> 1) < LUT_RING_A16 - 64u && USB_SERIAL_JTAG.ep1_conf.serial_out_ep_data_avail)
+                        qb[qw++ & (LUT_RING_A16 - 1u)] = (uint8_t)USB_SERIAL_JTAG.ep1.val;
+                } else if (step == 0u) {
+                    reporting = USB_SERIAL_JTAG.ep1_conf.serial_in_ep_data_free;
+                } else if (step == 1u) {
+                    const uint32_t fill = (qw - (qr >> 1)) >> 1;
+                    repw = 0xB7u | (fill & 255u) << 8 | (fill >> 8) << 16 | (under > 255u ? 255u : under) << 24;
+                } else if (step <= 5u) {
+                    if (reporting) { USB_SERIAL_JTAG.ep1.val = (uint8_t)repw; repw >>= 8; }
+                } else if (step == 6u) {
+                    if (reporting) { usb_serial_jtag_ll_txfifo_flush(); reporting = false; }
+                } else {
+#ifndef LUTG_REC
+                    const uint32_t t = ccount();
+                    if (qw != qw_seen) { qw_seen = qw; t_rx = t; }
+                    else if (t - t_rx > (qw ? CPU_HZ / 2 : 3 * CPU_HZ)) goto out;
+#endif
+                }
+            }
+            if (j + 1u < S) { ++r0; ++r1; ++r2; }
+            else { r0 = n0; r1 = n1; r2 = n2; }
+            word = ((uint32_t)*r0 + (uint32_t)*r1 + (uint32_t)*r2) ^ LUT_XOR;
+        }
+        if (++nsym == max_sym && max_sym) goto out;
+    }
+out:
+    io->qw = qw; io->qr = qr >> 1; io->under = under; io->lateness = late; io->stopped = false;
+    (void)qw_seen; (void)t_rx;
+    return nsym;
+}
+
 static void tx_qpsk_lut(uint32_t fkhz, uint32_t baud_req, uint32_t sps, int32_t amp, uint32_t secs, int32_t ifm, int32_t target, int32_t dc4i, int32_t dc4q,
                         int32_t gq, int32_t phim, bool psk8, bool a16, uint32_t gamma100) {
+    if (a16 && baud_req > 500000u) { say("ERR A16T maximum 500000 Bd: 1 MBd needs 500 kB/s USB; measured about 423 kB/s\r\n"); return; }
     const uint32_t period = (CPU_HZ + baud_req * sps / 2) / (baud_req * sps);
     const sample_clock_t clock = sample_clock_init(CPU_HZ, baud_req * sps);
     const bool fractional = psk8 && period != 20 && sps >= LUTG_MIN_S && sps <= LUTG8_MAX_S && clock.period >= 75;
+    const bool a16c = a16 && period != 20 && sps >= LUTA16_C_MIN_S && sps <= LUTA16_MAX_S && clock.period >= LUTA16_C_MIN_PERIOD;
     const bool fast8 = !psk8 && !a16 && sps == 8 && period == 20;
     const bool fastg = a16 ? (sps >= LUTA16_MIN_S && sps <= LUTA16_MAX_S && period == 20)
                     : psk8 ? ((sps == LUTG8_S8 || (sps >= LUTG_MIN_S && sps <= LUTG8_MAX_S)) && period == 20)
                             : (!fast8 && sps >= LUTG_MIN_S && sps <= LUTG_MAX_S && (period == 20 || period == 24));
     const sample_clock_t symbol_clock = sample_clock_init(CPU_HZ, baud_req);
     /* The generic sync sled can absorb a 0/1-cycle carry without slowing the sample kernel. */
-    const bool symbol_average = fastg && !a16 && sps != LUTG8_S8 && symbol_clock.period == sps * period;
-    const double baud = fractional || symbol_average ? baud_req : (double)CPU_HZ / ((double)period * sps), fso = baud * sps;
+    const bool symbol_average = fastg && sps != LUTG8_S8 && symbol_clock.period == sps * period;
+    const double baud = fractional || a16c || symbol_average ? baud_req : (double)CPU_HZ / ((double)period * sps), fso = baud * sps;
     const double half_bw = baud * 1.35 / 2.0, lo_nom = fkhz * 1000.0, ifh = ifm * baud;
     const double sig_lo = lo_nom + (ifh < 0 ? ifh : 0) - half_bw, sig_hi = lo_nom + (ifh > 0 ? ifh : 0) + half_bw;
     if (period < 16) { say("ERR QPSKT period %lu cycles < 16 (baud * sps too high)\r\n", (unsigned long)period); return; }
@@ -586,8 +659,8 @@ static void tx_qpsk_lut(uint32_t fkhz, uint32_t baud_req, uint32_t sps, int32_t 
     static uint8_t *ring;
     free(ring);                                                      /* every run starts from a clean heap: the tables (up to 74 KB) take the big block first, the ring goes into what is left */
     ring = NULL;
-    if (a16 && !fastg) {
-        say("ERR A16T 16APSK needs 8 MS/s with %d..%d samples per symbol (baud * sps = 8 MHz, i.e. %lu .. %lu Bd)\r\n", LUTA16_MIN_S, LUTA16_MAX_S, (unsigned long)(8000000 / LUTA16_MAX_S), (unsigned long)(8000000 / LUTA16_MIN_S));
+    if (a16 && !fastg && !a16c) {
+        say("ERR A16T 16APSK needs %d..%d samples at 20 cycles, or %d..%d samples with a minimum interval of %lu cycles\r\n", LUTA16_MIN_S, LUTA16_MAX_S, LUTA16_C_MIN_S, LUTA16_MAX_S, (unsigned long)LUTA16_C_MIN_PERIOD);
         return;
     }
     const bool p8c = fractional;                                    /* narrowband 8PSK: minimum floor interval includes accumulator overhead */
@@ -595,20 +668,20 @@ static void tx_qpsk_lut(uint32_t fkhz, uint32_t baud_req, uint32_t sps, int32_t 
         say("ERR PSK8T 8PSK needs 8 MS/s with 8 or %d..%d samples per symbol, or %d..%d samples per symbol with a minimum interval of 75 cycles (baud * sps <= 2.13 MHz)\r\n", LUTG_MIN_S, LUTG8_MAX_S, LUTG_MIN_S, LUTG8_MAX_S);
         return;
     }
-    if (!fast8 && !fastg && !p8c && sps != 4 && sps != 8 && sps != 16) {
+    if (!fast8 && !fastg && !p8c && !a16c && sps != 4 && sps != 8 && sps != 16) {
         say("ERR QPSKT %lu samples per symbol need 20 or 24 CPU cycles per sample (baud * sps = 8 or 6.67 MHz, sps %d..%d)\r\n", (unsigned long)sps, LUTG_MIN_S, LUTG_MAX_S);
         return;
     }
 #ifdef LUTG_REC
     if (fast8) { say("ERR QPSKT the recording build has no 1 MBd loop\r\n"); return; }
-    if (fastg || p8c) target = 1;
+    if (fastg || p8c || a16c) target = 1;
     rec_phase = secs;
 #endif
-    if ((fast8 || fastg || p8c) && target == 0) { say("ERR QPSKT the 8 / 6.67 MS/s loops need the USB stream (target > 0)\r\n"); return; }
-    int32_t *T = malloc(fast8 ? 4 * 2 * 256 * 8 : (fastg || p8c) ? (a16 ? lutt16_bytes(sps) : psk8 ? lutt8_bytes(sps) : lutt_bytes(sps)) : 4 * lut_words(sps));
+    if ((fast8 || fastg || p8c || a16c) && target == 0) { say("ERR QPSKT the streaming loops need the USB stream (target > 0)\r\n"); return; }
+    int32_t *T = malloc(fast8 ? 4 * 2 * 256 * 8 : (fastg || p8c || a16c) ? (a16 ? lutt16_bytes(sps) : psk8 ? lutt8_bytes(sps) : lutt_bytes(sps)) : 4 * lut_words(sps));
     if (T) ring = malloc(a16 ? LUT_RING_A16 : LUT_RING_BYTES);          /* 16APSK: an 8 KB ring, the RAM below the RF dump bank has to hold the loop's code beside it */
     if (!ring || !T) { free(T); free(ring); ring = NULL; say("ERR out of memory\r\n"); return; }
-    if (fastg || p8c) {
+    if (fastg || p8c || a16c) {
         float *hb = malloc(8 * sps * sizeof(float));
         if (!hb) { free(T); say("ERR out of memory\r\n"); return; }
         if (a16) lut_build_a16(T, sps, ifm, 0.35f, (float)amp, dc4i / 16.0f, dc4q / 16.0f, gq / 10000.0f, phim / 1000.0f, hb, gamma100);
@@ -623,7 +696,7 @@ static void tx_qpsk_lut(uint32_t fkhz, uint32_t baud_req, uint32_t sps, int32_t 
     uint32_t *rec = NULL;
 #ifdef LUTG_REC
     rec = malloc(4 * ((psk8 && sps == LUTG8_S8 ? 64 : LUTG_REC_SYMBOLS) * sps + 16));
-    if ((fastg || p8c) && !rec) { free(T); say("ERR out of memory\r\n"); return; }
+    if ((fastg || p8c || a16c) && !rec) { free(T); say("ERR out of memory\r\n"); return; }
 #endif
     if (!tune(fkhz)) { free(T); say("ERR TUNE\r\n"); return; }
     const uint32_t owner0 = rd(SRAM_OWNER);
@@ -631,7 +704,7 @@ static void tx_qpsk_lut(uint32_t fkhz, uint32_t baud_req, uint32_t sps, int32_t 
     esp_rom_delay_us(3000);
     DAC_BUF[0] = 0;
     usb_drain_rx();
-    say("OK QPSKT LO %.0f BAUD %.3f OUT %.0f AMP %ld SPS %lu PERIOD %lu IF %.0f TARGET %ld MOD %s REM %lu DIV %lu SREM %lu SDIV %lu\r\n", lo_hz, baud, fso, (long)amp, (unsigned long)sps, (unsigned long)(p8c ? clock.period : period), ifh, (long)target, a16 ? "16APSK" : psk8 ? "8PSK" : "QPSK", (unsigned long)(p8c ? clock.remainder : 0), (unsigned long)(p8c ? clock.divisor : 1), (unsigned long)(symbol_average ? symbol_clock.remainder : 0), (unsigned long)(symbol_average ? symbol_clock.divisor : 1));
+    say("OK QPSKT LO %.0f BAUD %.3f OUT %.0f AMP %ld SPS %lu PERIOD %lu IF %.0f TARGET %ld MOD %s REM %lu DIV %lu SREM %lu SDIV %lu\r\n", lo_hz, baud, fso, (long)amp, (unsigned long)sps, (unsigned long)(p8c || a16c ? clock.period : period), ifh, (long)target, a16 ? "16APSK" : psk8 ? "8PSK" : "QPSK", (unsigned long)(p8c || a16c ? clock.remainder : 0), (unsigned long)(p8c || a16c ? clock.divisor : 1), (unsigned long)(symbol_average ? symbol_clock.remainder : 0), (unsigned long)(symbol_average ? symbol_clock.divisor : 1));
     lut_io_t io = {0};
 #ifdef LUTG_REC
     esp_rom_delay_us(150000);                                        /* time for the host to put bytes into the USB FIFO (exercises the read slots) */
@@ -642,9 +715,9 @@ static void tx_qpsk_lut(uint32_t fkhz, uint32_t baud_req, uint32_t sps, int32_t 
     const uint32_t max_sym = (uint32_t)((double)secs * baud) & ~7u, mper = psk8 && sps == LUTG8_S8 ? 256 : 2048;
 #endif
 #ifdef LUTG_REC
-    if (p8c) {
+    if (p8c || a16c) {
         uint32_t rng = 0x2545F491u;                                  /* known symbols in a full ring (the same generator as tx_lutg) */
-        for (uint32_t i = 0; i < LUT_RING_BYTES; ++i) { rng ^= rng << 13; rng ^= rng >> 17; rng ^= rng << 5; ring[i] = (uint8_t)(rng >> 8); }
+        for (uint32_t i = 0; i < (a16c ? LUT_RING_A16 : LUT_RING_BYTES); ++i) { rng ^= rng << 13; rng ^= rng >> 17; rng ^= rng << 5; ring[i] = (uint8_t)(rng >> 8); }
     }
 #endif
     taskENTER_CRITICAL(&stream_mux);
@@ -655,6 +728,7 @@ static void tx_qpsk_lut(uint32_t fkhz, uint32_t baud_req, uint32_t sps, int32_t 
     wr(DAC_CTRL, 0x80000u | 1u | (1u << 31));
     const uint32_t n = fast8 ? tx_lut8(&c8, ring, T, max_sym)
                : p8c ? tx_p8_c(&io, ring, T, sps, clock, max_sym, rec)
+               : a16c ? tx_a16_c(&io, ring, T, sps, clock, max_sym, rec)
                : fastg ? tx_lutg(&cg, ring, T, sps, period, max_sym, mper, rec, psk8, a16, symbol_clock, symbol_average)
                : sps == 4 ? tx_sym_lut_4(&io, ring, (const uint8_t *)T, period, max_sym, target == 0)
                      : sps == 8 ? tx_sym_lut_8(&io, ring, (const uint8_t *)T, period, max_sym, target == 0)
@@ -671,6 +745,26 @@ static void tx_qpsk_lut(uint32_t fkhz, uint32_t baud_req, uint32_t sps, int32_t 
     if (fast8) { io.qw = c8.qw; io.qr = c8.qr; io.under = c8.under; io.lateness = c8.late; io.stopped = false; }
     if (fastg) { io.qw = cg.qw; io.qr = psk8 && sps == LUTG8_S8 ? cg.qr : cg.qr / ((psk8 || a16) ? 2 : 4); io.under = cg.under; io.lateness = cg.late; io.stopped = false; }
 #ifdef LUTG_REC
+    if (a16c) {
+        for (uint32_t k = 0; k < n && k < LUTG_REC_SYMBOLS; ++k) {
+            const uint32_t *w = rec + k * sps;
+#if LUTG_REC == 1
+            say("T%lu N:", (unsigned long)k);
+            for (uint32_t j = 0; j + 1u < sps; ++j) {
+                const long d = (long)(w[j + 1u] - w[j]);
+                if (d != (long)clock.period) say(" %lu:%ld", (unsigned long)j, d);
+            }
+            say(" | E %ld\r\n", k + 1u < n ? (long)(rec[(k + 1u) * sps] - w[sps - 1u]) : -1L);
+#else
+            for (uint32_t j = 0; j < sps; j += 8u) {
+                say("W%lu N %lu:", (unsigned long)k, (unsigned long)j);
+                for (uint32_t i = j; i < j + 8u && i < sps; ++i) say(" %05lx", (unsigned long)w[i]);
+                say("\r\n");
+            }
+#endif
+        }
+        say("SLED 0 late %lu exit 0\r\n", (unsigned long)io.lateness);
+    }
     if (p8c) {                                                       /* the narrowband loop records the words of its first 12 symbols (LUTG_REC 2); the ring symbols are the known ones */
         for (uint32_t k = 0; k < n && k < LUTG_REC_SYMBOLS; ++k)
             for (uint32_t j = 0; j < sps; j += 8) {
@@ -735,7 +829,7 @@ static void handle(char *line) {
         long baud = 0, sps = 4, amp = 300, secs = 1800, ifm = 0, tgt = 0, dc4i = 0, dc4q = 0, gq = 10000, phim = 0, gam = 315;
         const bool parsed = sscanf(line + (a16 ? 5 : 6), "%31s %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld %ld", fs_, &baud, &sps, &amp, &secs, &ifm, &tgt, &dc4i, &dc4q, &gq, &phim, &gam) >= 3 &&
                             parse_freq(fs_, &fk);
-        if (!parsed || baud < 2000 || baud > 1500000 || sps < 4 || sps > LUTG_MAX_S || amp < 1 || amp > 480 || secs < 1 || secs > 86400 || labs(ifm) > 6 ||
+        if (!parsed || baud < 2000 || baud > 1500000 || sps < (a16 ? LUTA16_C_MIN_S : 4) || sps > LUTG_MAX_S || amp < 1 || amp > 480 || secs < 1 || secs > 86400 || labs(ifm) > 6 ||
             tgt < 0 || tgt > 6000 || (tgt > 0 && tgt < 64) || gq < 7000 || gq > 13000 || labs(phim) > 40000 || gam < 200 || gam > 400) {
             say("ERR QPSKT|PSK8T|A16T f_MHz baud sps(4|8|16, or 16..232 when baud * sps = 8 or 6.67 MHz; PSK8T: 16..64 at 8 MHz) [amp 1..480 [seconds [if in multiples of baud, +-6 [target 0 = PRBS in the ESP, >0 = stream from USB [dcI dcQ in 1/16 code [g in 1e-4 [phase in 1e-3 deg [gamma x 100: 16APSK ring ratio 200..400]]]]]]]]]\r\n");
             return;
