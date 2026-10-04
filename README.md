@@ -136,7 +136,7 @@ Lower rates, down to about 10 kBd, use a C loop with a slower DAC so that the RR
 the actual rate; set the receiver to that rate. Short frames reduce latency at narrow rates. The lower-rate streaming path has host-side regression tests.
 Hardware reception at 66 kBd (actual 66 115.7 Bd), 8PSK 2/3, short frames, recovered a continuous run of 197 BBFRAMEs from a 20-second HackRF recording:
 1380 transport packets passed their CRC-8 checks, with no continuity errors, and the exported video and audio decoded without errors. SDRangel reception
-was also confirmed at 66 kBd and 1 MBd. The spectrum measurements below cover 8PSK at 200 kBd and above.
+was also confirmed at 66 kBd and 1 MBd. The spectrum measurements below cover 8PSK from 33 kBd to 1 MBd.
 
 | requested 8PSK rate | samples per symbol | CPU cycles per DAC store | DAC update rate | actual symbol rate |
 |---|---|---|---|---|
@@ -374,16 +374,25 @@ of the carrier itself.
 
 The same measurement for DVB-S2 8PSK (FEC 3/5, `--amp 300`, null packets only, which the scrambler and the LDPC code turn into the same kind of random symbols):
 tinySA Ultra+ through an attenuator, centre 2370 MHz, 30 passes averaged in power, 30 MHz span at RBW 30 kHz and a zoom of about six symbol rates (RBW 10 kHz,
-3 kHz at 250 and 200 kBd), every panel relative to its own top. The aliases are the zero-order-hold images of the DAC, so they are the same as for QPSK at the same symbol rate:
+3 kHz at 250, 200 and 125 kBd, 1 kHz at 66 and 33 kBd), every panel relative to its own top. The aliases are the zero-order-hold images of the DAC:
 
-| symbol rate | 8PSK alias at +-8 MHz | QPSK alias |
-|---|---|---|
-| 1 MBd | -28 dB | -27 dB |
-| 500 kBd | -34 dB | -34 dB |
-| 400 kBd | -36 dB | - |
-| 333 kBd | -38 dB | -37 dB |
-| 250 kBd | -41 dB | -41 dB |
-| 200 kBd | -43 dB | - |
+Below 125 kBd, 8PSK uses a slower DAC so that its RRC tables fit in RAM: 2.909 MS/s at 66 kBd and 2.105 MS/s at 33 kBd. The aliases appear at multiples of that update rate.
+The narrowband zoom sweeps are aligned by their signal centroid before power averaging. The QPSK alias levels at 66 and 33 kBd were measured with its 6.67 MS/s DAC.
+The 2026-10-04 narrowband measurements used firmware `ba3e266`, normal frames, and 10 dB internal analyzer attenuation. The stronger of the first two aliases is listed below;
+the plots mark both separately. Firmware reported `late_slots=0` at 125 kBd, about 5.7% of DAC slots at 66 kBd, and 0.0023% at 33 kBd. The C loop counts a slot as late when its
+deadline check is more than eight CPU cycles (50 ns) past the scheduled time. These spectra include that timing variation.
+
+| symbol rate | 8PSK DAC update rate | 8PSK alias | QPSK alias |
+|---|---|---|---|
+| 1 MBd | 8 MS/s | -28 dB | -27 dB |
+| 500 kBd | 8 MS/s | -34 dB | -34 dB |
+| 400 kBd | 8 MS/s | -36 dB | - |
+| 333 kBd | 8 MS/s | -38 dB | -37 dB |
+| 250 kBd | 8 MS/s | -41 dB | -41 dB |
+| 200 kBd | 8 MS/s | -43 dB | - |
+| 125 kBd | 8 MS/s | -48 dB | -49 dB |
+| 66 kBd | 2.909 MS/s | -45 dB | -52 dB |
+| 33 kBd | 2.105 MS/s | -48 dB | -59 dB |
 
 ### 8PSK, 1 MBd (8 samples per symbol, `lutg_p8s8.S`): alias -28 dB
 
@@ -408,6 +417,18 @@ tinySA Ultra+ through an attenuator, centre 2370 MHz, 30 passes averaged in powe
 ### 8PSK, 200 kBd (40 samples per symbol): alias -43 dB
 
 ![8PSK 200 kS/s](docs/spectrum_8PSK_200kBd.png)
+
+### 8PSK, 125 kBd (64 samples per symbol): aliases -49 / -48 dB at +-8 MHz
+
+![8PSK 125 kS/s](docs/spectrum_8PSK_125kBd.png)
+
+### 8PSK, 66 kBd (44 samples per symbol at 55 cycles, 66 116 Bd): alias -45 dB at +-2.909 MHz
+
+![8PSK 66 kS/s](docs/spectrum_8PSK_66kBd.png)
+
+### 8PSK, 33 kBd (64 samples per symbol at 76 cycles, 32 895 Bd): alias -48 dB at +-2.105 MHz
+
+![8PSK 33 kS/s](docs/spectrum_8PSK_33kBd.png)
 
 ### Amplitude
 
