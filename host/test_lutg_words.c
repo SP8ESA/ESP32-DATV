@@ -28,12 +28,13 @@ static float rrc_pulse(float t, float b) {
 }
 #include "../firmware/main/qpsk_lut.h"
 int main(int argc, char **argv) {
-    int p8 = 0, p8s8 = 0, a16 = 0;
+    int p8 = 0, p8s8 = 0, a16 = 0, a16s8 = 0;
     if (argc > 1 && !strcmp(argv[1], "-p8")) { p8 = 1; ++argv; --argc; }
     if (argc > 1 && !strcmp(argv[1], "-p8s8")) { p8 = p8s8 = 1; ++argv; --argc; }
     if (argc > 1 && !strcmp(argv[1], "-a16")) { a16 = 1; ++argv; --argc; }
+    if (argc > 1 && !strcmp(argv[1], "-a16s8")) { a16 = a16s8 = 1; ++argv; --argc; }
     const unsigned gamma100 = a16 && argc > 4 ? (unsigned)atoi(argv[4]) : 315;
-    const unsigned nsym = p8s8 ? 64 : 12;
+    const unsigned nsym = p8s8 || a16s8 ? 64 : 12;
     const uint32_t S = atoi(argv[1]);
     const int amp = argc > 3 ? atoi(argv[3]) : 300;
     FILE *f = fopen(argv[2], "r");
@@ -42,8 +43,8 @@ int main(int argc, char **argv) {
     char line[512], cp;
     unsigned k, j;
     while (fgets(line, sizeof line, f)) {
-        char *p = line;
-        if (*p == 'W' && sscanf(p + 1, "%u %c %u:", &k, &cp, &j) == 3) {
+        char *p = strchr(line, 'W');
+        if (p && sscanf(p + 1, "%u %c %u:", &k, &cp, &j) == 3) {
             p = strchr(p, ':') + 1;
             for (unsigned i = 0; i < 8 && j + i < S; ++i) {
                 unsigned v;
@@ -64,7 +65,7 @@ int main(int argc, char **argv) {
     for (int i = 0; i < 16384; ++i) { rng ^= rng << 13; rng ^= rng >> 17; rng ^= rng << 5; ring[i] = (uint8_t)(rng >> 8); }
     long bad = 0, tot = 0;
     uint32_t C = 0;
-    for (unsigned n = 0; n < (p8s8 ? 56u : nsym - 1); ++n) {   /* the last symbol is cut short (1 MBd 8PSK: the 8th pass is, only the 7 complete passes count) */
+    for (unsigned n = 0; n < (p8s8 || a16s8 ? 56u : nsym - 1); ++n) {   /* fixed 8-SPS loops record seven complete passes */
         for (uint32_t j = 0; j < S; ++j) {
             uint32_t w = 0;
             if (a16) for (uint32_t g = 0; g < 3; ++g) w += (uint32_t)T[(g * 256 + ((C >> (8 * g)) & 255)) * S + j];
@@ -90,5 +91,5 @@ int main(int argc, char **argv) {
         }
     }
     printf("S=%u: %ld words compared, %ld mismatches\n", S, tot, bad);
-    return bad != 0;
+    return bad != 0 || (a16s8 && tot != 56u * S);
 }

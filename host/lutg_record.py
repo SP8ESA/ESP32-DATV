@@ -8,6 +8,7 @@ build ("SLED" and "TX END" lines) is complete. Only for the LUTG_REC builds, see
 in its read slots, otherwise it takes the no-byte path (both must have the same cycle count).
 """
 import argparse
+import re
 import time
 
 import serial
@@ -48,7 +49,9 @@ def main():
             time.sleep(0.2)
             buf += s.read(65536)
             break
-    print(buf.decode(errors="replace"))
+    # Binary fill reports can contain NUL and precede the first text row.
+    # Remove them before exporting a recording for the C reference checker.
+    print(re.sub(rb"\xB7...", b"", buf, flags=re.S).decode(errors="replace"))
 
 
 if __name__ == "__main__":

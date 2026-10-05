@@ -1,0 +1,244 @@
+{
+  "captured_bytes": 14837900,
+  "ts_packets": 78925,
+  "trailing_bytes": 0,
+  "sync_errors": 0,
+  "transport_error_packets": 0,
+  "continuity_errors": [],
+  "pid_counts": {
+    "17": 92,
+    "0": 238,
+    "4096": 238,
+    "256": 65623,
+    "257": 3040
+  },
+  "ffmpeg_interval_start_seconds": 5,
+  "ffmpeg_interval_seconds": 35,
+  "ffmpeg_returncode": 0,
+  "ffmpeg_errors": "",
+  "mer_db_min": 18.101408004760742,
+  "mer_db_max": 18.862503051757812,
+  "buffers": [
+    [
+      0,
+      6570
+    ],
+    [
+      5352,
+      6530
+    ],
+    [
+      4976,
+      6540
+    ],
+    [
+      5136,
+      6490
+    ],
+    [
+      4906,
+      6644
+    ],
+    [
+      3924,
+      6546
+    ],
+    [
+      5176,
+      6638
+    ],
+    [
+      4838,
+      6616
+    ],
+    [
+      4898,
+      6580
+    ],
+    [
+      4554,
+      6620
+    ],
+    [
+      4740,
+      6622
+    ],
+    [
+      5056,
+      6614
+    ],
+    [
+      5242,
+      6566
+    ],
+    [
+      4826,
+      6620
+    ],
+    [
+      5126,
+      6600
+    ],
+    [
+      5302,
+      6566
+    ],
+    [
+      5454,
+      6626
+    ],
+    [
+      4914,
+      6636
+    ],
+    [
+      5010,
+      6552
+    ],
+    [
+      5488,
+      6596
+    ],
+    [
+      4884,
+      6598
+    ],
+    [
+      4230,
+      6566
+    ],
+    [
+      4874,
+      6644
+    ]
+  ],
+  "tx_summary": [
+    "TX END symbols=381790976 bytes_in=23564480 underruns=74363 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)"
+  ],
+  "remux_returncode": 0,
+  "remux_errors": "",
+  "standard": "DVB-S2",
+  "modulation": "16APSK",
+  "symbol_rate": 1000000,
+  "dac_sample_rate": 8000000,
+  "samples_per_symbol": 8,
+  "fec": "2/3",
+  "pilots": true,
+  "receiver": "HackRF / SDRangel",
+  "receiver_bandwidth_hz": 3000000,
+  "receiver_restart_after_settings": true,
+  "recording_duration_seconds": 46,
+  "notes": [
+    "The complete recording has zero TS continuity and transport errors.",
+    "A 35-second section was remuxed from a video keyframe and decoded with FFmpeg.",
+    "Total firmware underruns include startup and the intentional silent shutdown; steady buffer reports stayed above zero.",
+    "TX END symbols is the legacy field name for DAC sample updates."
+  ],
+  "duration_limit_test": {
+    "firmware_seconds": 1,
+    "observed_seconds": 1.0322741470008623,
+    "summary": "TX END symbols=8010176 bytes_in=507328 underruns=891 late_slots=0 (lag bits 0x0) buffer=5130 pairs (host silent or time over)",
+    "max_counter_at_24_hours": 42023347
+  },
+  "successful_recording_firmware_status": "8-SPS waveform loop; recorded before the duration-counter-only fix.",
+  "additional_reception_check": {
+    "firmware_binary_sha256": "f8109019990677bf0f4c1ead3a482f2ce67f370092670c2d61b09d34135ab83b",
+    "capture_seconds": 12,
+    "captured_bytes": 2142448,
+    "ts_packets": 11396,
+    "sync_errors": 0,
+    "transport_error_packets": 0,
+    "continuity_errors": [
+      {
+        "pid": 256,
+        "offset": 564,
+        "previous": 0,
+        "actual": 3
+      },
+      {
+        "pid": 256,
+        "offset": 1161276,
+        "previous": 0,
+        "actual": 10
+      },
+      {
+        "pid": 0,
+        "offset": 1191168,
+        "previous": 12,
+        "actual": 0
+      },
+      {
+        "pid": 4096,
+        "offset": 1191356,
+        "previous": 12,
+        "actual": 0
+      },
+      {
+        "pid": 17,
+        "offset": 1213352,
+        "previous": 3,
+        "actual": 5
+      },
+      {
+        "pid": 256,
+        "offset": 1408684,
+        "previous": 9,
+        "actual": 3
+      },
+      {
+        "pid": 17,
+        "offset": 1425040,
+        "previous": 6,
+        "actual": 8
+      },
+      {
+        "pid": 256,
+        "offset": 1428612,
+        "previous": 2,
+        "actual": 9
+      },
+      {
+        "pid": 0,
+        "offset": 1442524,
+        "previous": 3,
+        "actual": 11
+      },
+      {
+        "pid": 4096,
+        "offset": 1442712,
+        "previous": 3,
+        "actual": 11
+      },
+      {
+        "pid": 256,
+        "offset": 1498172,
+        "previous": 5,
+        "actual": 0
+      },
+      {
+        "pid": 256,
+        "offset": 1524868,
+        "previous": 12,
+        "actual": 8
+      },
+      {
+        "pid": 0,
+        "offset": 1570740,
+        "previous": 11,
+        "actual": 0
+      },
+      {
+        "pid": 4096,
+        "offset": 1570928,
+        "previous": 11,
+        "actual": 0
+      }
+    ],
+    "ffmpeg_returncode": 0,
+    "ffmpeg_errors": "[h264 @ 0x5cfb30085980] left block unavailable for requested intra mode\n[h264 @ 0x5cfb30085980] error while decoding MB 0 12, bytestream 14003\n[h264 @ 0x5cfb300e5c80] co located POCs unavailable\n[h264 @ 0x5cfb30102940] mmco: unref short failure\n[h264 @ 0x5cfb3013c3c0] mmco: unref short failure\n",
+    "receiver_fifo_overflows_observed": true,
+    "notes": [
+      "This later 12-second recording contains continuity and video errors. SDRangel logged receive FIFO overflows; transmitter buffer reports stayed above zero."
+    ]
+  }
+}

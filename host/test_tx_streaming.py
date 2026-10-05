@@ -99,7 +99,7 @@ class StreamingTests(unittest.TestCase):
         self.assertEqual(output_baud(33000, 16, "qpsk"), CPU_HZ / (303 * 16))
 
     def test_16apsk_standard_rates_fit_the_selected_clock(self):
-        rates = [(500000, 16), (400000, 20), (333000, 24),
+        rates = [(1000000, 8), (500000, 16), (400000, 20), (333000, 24),
                  (250000, 8), (200000, 10), (125000, 16), (66000, 24), (33000, 24)]
         for baud, expected_sps in rates:
             with self.subTest(baud=baud):
@@ -113,7 +113,7 @@ class StreamingTests(unittest.TestCase):
         self.assertEqual(output_baud(66000, 16, "16apsk"), 66000)
         self.assertEqual(output_baud(444444, 18, "16apsk"), 444444)
         self.assertEqual(auto_sps_16apsk(2000), 24)
-        for baud in [0, 1999, 500001, 1000000]:
+        for baud in [0, 1999, 500001, 999999, 1000001]:
             with self.subTest(baud=baud), self.assertRaises(SystemExit):
                 auto_sps_16apsk(baud)
 

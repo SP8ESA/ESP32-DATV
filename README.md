@@ -17,7 +17,7 @@ Common symbol rates:
 |---|---|---|
 | QPSK | DVB-S, DVB-S2 | 33, 66, 125, 250, 333, 500, 1000 |
 | 8PSK | DVB-S2 | 33, 66, 125, 250, 333, 500, 1000 |
-| 16APSK | DVB-S2 | 33, 66, 125, 250, 333, 500 |
+| 16APSK | DVB-S2 | 33, 66, 125, 250, 333, 500, 1000 |
 
 The firmware averages CPU cycle intervals where needed to obtain the requested mean
 symbol rate. Crystal error remains; set `--ppm` for your board. The DAC sample rate
@@ -59,12 +59,13 @@ python3 host/tx_dvbs.py --freq 2370 --baud 1000000 --fec 1/2
 # DVB-S2, 8PSK, 333 kS/s, FEC 3/5
 python3 host/tx_dvbs.py --freq 2370 --baud 333000 --dvbs2 --mod 8psk --fec 3/5
 
-# DVB-S2, 16APSK, 66 kS/s, FEC 2/3
-python3 host/tx_dvbs.py --freq 2370 --baud 66000 --dvbs2 --mod 16apsk --fec 2/3
+# DVB-S2, 16APSK, 1 MS/s, FEC 2/3
+python3 host/tx_dvbs.py --freq 2370 --baud 1000000 --dvbs2 --mod 16apsk --fec 2/3 --pilots
 ```
 
 Set the receiver to the same frequency, standard, modulation, symbol rate and FEC,
-with roll-off 0.35. In SDRangel, enable soft LDPC decoding for DVB-S2.
+with roll-off 0.35. In SDRangel, enable soft LDPC decoding for DVB-S2; restart
+the receiver after changing symbol rate if it loses lock.
 Stop with Ctrl-C; the ESP also stops after about 0.5 seconds without USB data.
 
 Useful options:
@@ -134,18 +135,18 @@ three-bin smoothing for display. [Raw sweeps and CSVs](docs/spectra/) ·
   </tr>
 </table>
 
-### 16APSK — 33 to 500 kS/s, plus a 1 MS/s prototype
+### 16APSK — 33 to 1000 kS/s
 
-The experimental 1 MS/s build reads USB data four bytes at a time from full 64-byte
-packets and uses a 2 MS/s DAC (2 samples per symbol). This measurement includes pilots.
-DAC images repeat every 2 MHz; their peaks are only 13–14 dB below the main-channel peak
-(RBW 30 kHz), so output filtering is needed. Standard firmware still limits 16APSK to
-500 kS/s. [Prototype settings and raw data](docs/spectra/16apsk_1MBd_measurement.json) ·
-[Experimental patch](docs/spectra/16apsk_1MBd_prototype.patch).
+At 1 MS/s, the DAC runs at 8 MS/s (8 samples per symbol). The first image peaks are
+about 27–28 dB below the main-channel peak, compared with 13–14 dB in the previous
+2 MS/s prototype. This measurement includes pilots.
+[Settings and raw data](docs/spectra/16apsk_1MBd_measurement.json) ·
+[Video reception test](docs/spectra/16apsk_1MBd_validation.json) ·
+[Archived 2 MS/s prototype](docs/spectra/16apsk_1MBd_2MSps_prototype/16apsk_1MBd_measurement.json).
 
 <table>
   <tr>
-    <td width="50%" align="center"><strong>1 MS/s — prototype</strong><br><a href="docs/spectrum_16APSK_1MBd.png"><img src="docs/spectrum_16APSK_1MBd.png" alt="Experimental 16APSK 1 MS/s measured spectrum, DAC 2 MS/s" width="100%"></a></td>
+    <td width="50%" align="center"><strong>1 MS/s</strong><br><a href="docs/spectrum_16APSK_1MBd.png"><img src="docs/spectrum_16APSK_1MBd.png" alt="16APSK 1 MS/s measured spectrum, DAC 8 MS/s" width="100%"></a></td>
     <td width="50%" align="center"><strong>500 kS/s</strong><br><a href="docs/spectrum_16APSK_500kBd.png"><img src="docs/spectrum_16APSK_500kBd.png" alt="16APSK 500 kS/s measured spectrum" width="100%"></a></td>
   </tr>
   <tr>

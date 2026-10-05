@@ -80,10 +80,15 @@ class Link:
     def send(self, data):
         self.s.write(data)
 
-    def finish(self, timeout=5.0):
-        """Stop byte (ends the PRBS test at once; a streaming transmitter stops 0.5 s after the last byte), then the 'TX END' line."""
+    def finish(self, timeout=5.0, send_stop=True):
+        """Wait for TX END, optionally sending the legacy stop marker.
+
+        Full-packet transmitters use send_stop=False: a short write would violate
+        their 64-byte input contract. Streaming stops after 0.5 s without input.
+        """
         try:
-            self.s.write(b"\xA5\xFF")
+            if send_stop:
+                self.s.write(b"\xA5\xFF")
         except serial.SerialException:
             pass
         t0 = time.time()

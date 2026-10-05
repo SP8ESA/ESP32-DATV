@@ -157,9 +157,11 @@ def auto_sps(baud):
 
 
 def auto_sps_16apsk(baud):
-    """Use the fast 16..24-SPS assembly loop near 8 MS/s, otherwise fit the rational C clock into 4..24 SPS."""
+    """Use 8 SPS at 1 MBd, 16..24 SPS near 8 MS/s, or a 4..24-SPS rational C clock."""
+    if baud == 1_000_000:
+        return 8
     if not 2000 <= baud <= 500_000:
-        raise SystemExit("16APSK: --baud must be 2000 .. 500000 Bd; 1 MBd needs 500 kB/s USB, measured about 423 kB/s")
+        raise SystemExit("16APSK: --baud must be 2000 .. 500000 Bd or 1000000 Bd")
     sps = round(CPU_HZ / (20 * baud))
     if 16 <= sps <= 24 and abs(CPU_HZ / (20 * sps) / baud - 1) <= 0.01:
         return sps
@@ -226,13 +228,13 @@ def main():
     ap.add_argument("--fec", default="1/2", help="code rate: DVB-S 1/2 2/3 3/4 5/6 7/8; with --dvbs2 1/4 1/3 2/5 1/2 3/5 2/3 3/4 4/5 5/6 8/9 9/10 (short frames: no 9/10)")
     ap.add_argument("--dvbs2", action="store_true", help="DVB-S2 instead of DVB-S")
     ap.add_argument("--mod", default="qpsk", choices=("qpsk", "8psk", "16apsk"),
-                    help="DVB-S2 modulation (8PSK: code rates 3/5 2/3 3/4 5/6 8/9 9/10, 10..500 kBd and 1 MBd; 16APSK: code rates 2/3 3/4 4/5 5/6 8/9 9/10, 2..500 kBd)")
+                    help="DVB-S2 modulation (8PSK: code rates 3/5 2/3 3/4 5/6 8/9 9/10, 10..500 kBd and 1 MBd; 16APSK: code rates 2/3 3/4 4/5 5/6 8/9 9/10, 2..500 kBd and 1 MBd)")
     ap.add_argument("--frame", default="normal", choices=("normal", "short"), help="DVB-S2 FECFRAME size (normal 64800 bits, short 16200)")
     ap.add_argument("--pilots", action="store_true", help="DVB-S2 pilots (36 symbols after every 16 slots)")
     ap.add_argument("--sps", type=int, default=0, help="DAC samples per symbol (16APSK: 4..24; QPSK: 4/8/16 or 16..232; 8PSK: 8 or 16..64); 0 = automatic: the hand-scheduled 8 / 6.67 MS/s loops when they fit the symbol rate, else the most that keeps the output at or below 4 MS/s")
     ap.add_argument("--ifm", type=int, default=0, help="centre = LO + ifm * baud (puts the LO leakage outside the signal)")
-    ap.add_argument("--amp", type=int, default=0, help="peak amplitude in DAC codes (1..480); 0 = 300, 8PSK 400 (same mean power as QPSK)")
-    ap.add_argument("--target", type=int, default=0, help="ESP symbol buffer fill to hold [pairs of 2 bytes] (default 3000, 6000 for 8PSK at 1 MBd: the ring holds 8192)")
+    ap.add_argument("--amp", type=int, default=0, help="peak amplitude in DAC codes (1..480); 0 = 300 for QPSK, 420 for 8PSK/16APSK")
+    ap.add_argument("--target", type=int, default=0, help="ESP buffer fill [pairs of 2 bytes]: default 3000 for QPSK, 2500 for 16APSK; at 1 MBd, 6000 for 8PSK or 7000 for 16APSK")
     ap.add_argument("--film", help="video file to encode and loop (default: the demo film)")
     ap.add_argument("--width", type=int, default=640, help="--film: picture width")
     ap.add_argument("--video-k", type=int, default=0, help="--film/--test: video bit rate [kb/s] (0 = from the channel capacity)")
@@ -259,10 +261,13 @@ def main():
         auto_sps_16apsk(a.baud)     # reject unsupported rates even with an explicit --sps
     if not a.sps:
         a.sps = auto_sps_16apsk(a.baud) if a.mod == "16apsk" else auto_sps_8psk(a.baud) if a.mod == "8psk" else auto_sps(a.baud)
+    a16s8 = a.mod == "16apsk" and a.baud == 1000000
+    if a16s8 and a.sps != 8:
+        raise SystemExit("16APSK at 1 MS/s requires --sps 8")
     if not a.target:
-        a.target = 6000 if a.mod == "8psk" and a.sps == 8 else 2500 if a.mod == "16apsk" else 3000
+        a.target = 6000 if a.mod == "8psk" and a.sps == 8 else (7000 if a16s8 else 2500) if a.mod == "16apsk" else 3000
     baud_act = output_baud(a.baud, a.sps, a.mod)
-    if (a.mod == "8psk" and 460000 < baud_act < 1000000) or (a.mod == "16apsk" and baud_act > 460000):
+    if (a.mod == "8psk" and 460000 < baud_act < 1000000) or (a.mod == "16apsk" and 460000 < baud_act < 1000000):
         print(f"note: {a.mod.upper()} at {baud_act / 1e3:.0f} kBd needs {baud_act / 2e3:.0f} kB/s over the USB link to the ESP, which carries about 262 kB/s at 500 kBd and depends on the ESP's read rate: "
               "watch the 'ESP buffer' lines, if it runs dry the receiver sees short drop-outs (lower the symbol rate)")
     if abs(baud_act / a.baud - 1) > 0.01:
@@ -296,8 +301,9 @@ def main():
         std = f"DVB-S2 {a.mod.upper()} {a.frame} frame{', pilots' if a.pilots else ''}" if a.dvbs2 else "DVB-S"
         print(f"{info}\n" + ("UNMODULATED CARRIER (--cw)\n" if a.cw else "") + f"spectrum centre {(lo_true + if_hz) / 1e6:.6f} MHz (requested {a.freq:.6f}), {baud_act:.1f} Bd, "
               f"{std} FEC {a.fec}, RRC 0.35 occupies {baud_act * 1.35 / 1e3:.0f} kHz, TS capacity {cap / 1e3:.0f} kb/s")
-        # The USB link carries more with bigger writes (64 bytes: 360 kB/s, 2 kB: 420 kB/s, 64 kB: 430 kB/s): at 1 MBd 8PSK (375 kB/s) write in big pieces
-        min_todo, max_chunk = (400, 2048) if a.sps == 8 and a.mod == "8psk" else (32, 1024)
+        # Large writes keep USB busy while the encoder prepares the next frame.
+        # At 1 MBd 16APSK needs 500 kB/s; its loop requires full 64-byte packets.
+        min_todo, max_chunk = (400, 4096) if a16s8 else (400, 2048) if a.sps == 8 and a.mod == "8psk" else (32, 1024)
         buf = b""
         # The encoder runs in its own thread, ahead of the USB writes: the kernel takes about one write at a time, so encoding between two writes leaves the
         # link idle (a loop that encodes and writes alternately delivered 360 kB/s, a pre-encoded stream 420 kB/s)
@@ -321,6 +327,8 @@ def main():
                     except queue.Empty:
                         break
                 nb = min(nb, len(buf))
+                if a16s8:
+                    nb -= nb % 64    # full USB packets; the 1 MS/s loop drains eight-byte groups
                 if nb:
                     link.send(buf[:nb])                                   # raw symbol bytes, no framing
                     buf = buf[nb:]
@@ -338,7 +346,7 @@ def main():
         except NameError:
             pass
         src.close()
-        print(link.finish())
+        print(link.finish(send_stop=not a16s8))
 
 
 if __name__ == "__main__":

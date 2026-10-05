@@ -276,10 +276,10 @@ def main():
         finished = {(r["modulation"], r["requested_baud"]) for r in metadata["rates"]}
         for mod, fec in FEC.items():
             for baud in RATES:
-                if (mod == "16apsk" and baud == 1000000) or (mod, baud) in finished:
+                if (mod, baud) in finished:
                     continue
                 stem = f"{mod}_{'1MBd' if baud == 1000000 else str(baud // 1000) + 'kBd'}"
-                log(f"{len(metadata['rates']) + 1}/20: {mod.upper()} {baud} Bd")
+                log(f"{len(metadata['rates']) + 1}/{len(FEC) * len(RATES)}: {mod.upper()} {baud} Bd")
                 path = output / f"tx_{stem}.log"
                 command = ["/usr/bin/python3", "-u", "-B", "host/tx_dvbs.py", "--freq", "2370.000", "--baud", str(baud),
                            "--mod", mod, "--fec", fec, "--frame", "normal", "--null", "--amp", "300", "--ppm", "12", "--port", ESP_PORT]
