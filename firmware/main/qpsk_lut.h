@@ -212,4 +212,57 @@ static int lut_build_a16(int32_t *T, uint32_t S, int32_t ifm, float beta, float 
     return 1;
 }
 
+/* ---- 32APSK for the narrowband C loop (tx_a32_c in main.c): a symbol is the DVB-S2 bit quintuple v = 0..31 (rings of 4 + 12 + 16 points, the radii for a mean power of 1 from
+ * gamma1 = R2 / R1 and gamma2 = R3 / R1, both x 100). Two symbols of 5 bits would make 1024 rows per table, so the RRC filter (truncated to 6 symbols, as for 16APSK)
+ * has one table of 36 rows per tap: T[(tap * 36 + v) * S + j], tap 0 the newest symbol. Rows 32..35 are unit-radius PL points.
+ * The row pointer is base + v * S, the next sample is 4 bytes further. Size 864 * S bytes. */
+#define LUTA32_TAPS 6u
+#define LUTA32_POINTS 36u  /* 32 data points and four optional unit-radius PL points */
+static inline uint32_t lutt32_bytes(uint32_t S) { return 4u * LUTA32_POINTS * LUTA32_TAPS * S; }
+
+static int lut_build_a32(int32_t *T, uint32_t S, int32_t ifm, float beta, float amp, float dci, float dcq, float g, float phi_deg, float *hbuf, uint32_t gamma1_100, uint32_t gamma2_100) {
+    static const float ang[LUTA32_POINTS] = {45, 75, -45, -75, 135, 105, -135, -105, 22.5f, 67.5f, -45, -90, 135, 90, -157.5f, -112.5f,
+                                  15, 45, -15, -45, 165, 135, -165, -135, 0, 45, -22.5f, -67.5f, 157.5f, 112.5f, 180, -135,
+                                  45, 135, -135, -45};
+    const float pi = 3.14159265f;
+    const float g1 = (float)gamma1_100 / 100.0f, g2 = (float)gamma2_100 / 100.0f, r1 = sqrtf(32.0f / (4.0f + 12.0f * g1 * g1 + 16.0f * g2 * g2));
+    const float cq = cosf(phi_deg * pi / 180.0f), sq = sinf(phi_deg * pi / 180.0f);
+    const float kq = g * (fabsf(cq) + fabsf(sq));
+    float worst = 0.0f, pc[LUTA32_POINTS], ps[LUTA32_POINTS], pmax = 0.0f;
+    for (uint32_t v = 0; v < LUTA32_POINTS; ++v) {
+        const uint32_t ring = v < 8u ? 2u : v < 16u ? 3u : v < 24u ? ((v & 1u) ? 1u : 2u) : 3u;      /* 1 inner (4 points), 2 middle (12), 3 outer (16) */
+        const float r = v >= 32u ? 1.0f : ring == 1u ? r1 : ring == 2u ? g1 * r1 : g2 * r1;
+        pc[v] = r * cosf(ang[v] * pi / 180.0f);
+        ps[v] = r * sinf(ang[v] * pi / 180.0f);
+        if (fabsf(pc[v]) > pmax) pmax = fabsf(pc[v]);
+        if (fabsf(ps[v]) > pmax) pmax = fabsf(ps[v]);
+    }
+    for (uint32_t j = 0; j < S; ++j) {
+        float sum = 0.0f;
+        for (uint32_t l = 0; l < LUTA32_TAPS; ++l) {
+            hbuf[l * S + j] = rrc_pulse((float)l + (float)j / (float)S - (float)LUTA32_TAPS / 2.0f, beta);
+            sum += fabsf(hbuf[l * S + j]);
+        }
+        const float ph = 2.0f * pi * (float)((ifm * (int32_t)j) % (int32_t)S) / (float)S;
+        const float w = sum * pmax * (fabsf(cosf(ph)) + fabsf(sinf(ph))) * (kq > 1.0f ? kq : 1.0f);      /* |I|, |Q| <= pmax for every point */
+        if (w > worst) worst = w;
+    }
+    const float sc = amp / worst;
+    for (uint32_t k = 0; k < LUTA32_TAPS; ++k)
+        for (uint32_t j = 0; j < S; ++j) {
+            const float ph = 2.0f * pi * (float)((ifm * (int32_t)j) % (int32_t)S) / (float)S;
+            const float c = cosf(ph), s = sinf(ph);
+            const float p = hbuf[k * S + j];
+            for (uint32_t v = 0; v < LUTA32_POINTS; ++v) {
+                const float vi = pc[v] * p, vq = ps[v] * p;
+                const float ri = vi * c - vq * s, rq = vi * s + vq * c;
+                float oi = ri * sc, oq = g * (rq * cq + ri * sq) * sc;
+                if (k == 0u) { oi += dci; oq += dcq; }
+                if (k == LUTA32_TAPS - 1u) { oi += 512.0f; oq += 512.0f; }
+                T[(k * LUTA32_POINTS + v) * S + j] = (int32_t)lroundf(oi) + ((int32_t)lroundf(oq) << 10);
+            }
+        }
+    return 1;
+}
+
 #endif

@@ -13,15 +13,17 @@ produces the transmitted signal; no external modulator is needed.
 
 Common symbol rates:
 
-| Modulation | Standard | Symbol rates (kS/s) |
-|---|---|---|
-| QPSK | DVB-S, DVB-S2 | 33, 66, 125, 250, 333, 500, 1000 |
-| 8PSK | DVB-S2 | 33, 66, 125, 250, 333, 500, 1000 |
-| 16APSK | DVB-S2 | 33, 66, 125, 250, 333, 500, 1000 |
+| Modulation | Standard | Symbol rates (kS/s) | Status |
+|---|---|---|---|
+| QPSK | DVB-S, DVB-S2 | 33, 66, 125, 250, 333, 500, 1000 | Working |
+| 8PSK | DVB-S2 | 33, 66, 125, 250, 333, 500, 1000 | Working |
+| 16APSK | DVB-S2 | 33, 66, 125, 250, 333, 500, 1000 | Working |
+| 32APSK | DVB-S2 | 33, 66, 125, 250 | Working; RX details below |
 
 The firmware averages CPU cycle intervals where needed to obtain the requested mean
 symbol rate. Crystal error remains; set `--ppm` for your board. The DAC sample rate
 is selected automatically and depends on modulation and symbol rate.
+32APSK at 250 kS/s uses 8 MS/s (32 SPS); narrower 32APSK modes use the slower C loop.
 
 ## Installation
 
@@ -61,11 +63,17 @@ python3 host/tx_dvbs.py --freq 2370 --baud 333000 --dvbs2 --mod 8psk --fec 3/5
 
 # DVB-S2, 16APSK, 1 MS/s, FEC 2/3
 python3 host/tx_dvbs.py --freq 2370 --baud 1000000 --dvbs2 --mod 16apsk --fec 2/3 --pilots
+
+# DVB-S2, 32APSK, 250 kS/s, FEC 3/4
+python3 host/tx_dvbs.py --freq 2370 --baud 250000 --dvbs2 --mod 32apsk --fec 3/4 --pilots --apsk-pl unit
 ```
 
 Set the receiver to the same frequency, standard, modulation, symbol rate and FEC,
 with roll-off 0.35. In SDRangel, enable soft LDPC decoding for DVB-S2; restart
-the receiver after changing symbol rate if it loses lock.
+the receiver after changing symbol rate if it loses lock. The current 32APSK loop
+supports 2–250 kS/s. Use `--apsk-pl unit` with SDRangel: it gives PLHEADER and pilots
+their own unit-radius points. The default `outer` keeps the existing outer-ring
+normalization. 16APSK is unchanged.
 Stop with Ctrl-C; the ESP also stops after about 0.5 seconds without USB data.
 
 Useful options:
@@ -75,11 +83,12 @@ Useful options:
 | `--film video.mp4` | Encode and loop your own video |
 | `--test` | Generate a test pattern and tone |
 | `--ts stream.ts` | Loop an existing constant-bit-rate MPEG transport stream that fits the channel; `--ts -` reads stdin |
-| `--port /dev/ttyACM0` | Select the board; otherwise the first `/dev/ttyACM*` is used |
+| `--port /dev/ttyACM0` | Select the board; otherwise native Espressif USB is preferred |
 | `--frame short`, `--pilots` | DVB-S2 short frames or pilots |
+| `--apsk-pl outer\|unit` | 32APSK PL amplitude: existing outer-ring scale or unit PL symbols for an E=1 receiver |
 | `--ppm N` | Compensate your board's crystal error |
 | `--cal file.json`, `--no-cal` | Use your own I/Q calibration or disable the included example calibration |
-| `--amp N` | DAC amplitude; defaults: 300 for QPSK, 420 for 8PSK/16APSK |
+| `--amp N` | DAC amplitude; defaults: 300 for QPSK, 400 for 32APSK, 420 for 8PSK/16APSK |
 
 All options: `python3 host/tx_dvbs.py --help`.
 
@@ -160,6 +169,35 @@ about 27–28 dB below the main-channel peak, compared with 13–14 dB in the pr
   <tr>
     <td width="50%" align="center"><strong>33 kS/s</strong><br><a href="docs/spectrum_16APSK_33kBd.png"><img src="docs/spectrum_16APSK_33kBd.png" alt="16APSK 33 kS/s measured spectrum" width="100%"></a></td>
     <td width="50%"></td>
+  </tr>
+</table>
+
+### 32APSK — 33 to 250 kS/s
+
+Measured on 2026-10-09 with live video, FEC 3/4, pilots, `--apsk-pl unit` and
+`--amp 400`. Three sweeps averaged in power; three-bin display smoothing.
+[Raw data and settings](docs/32apsk/measurement.json) ·
+[Reception results](docs/32apsk/reception.json).
+
+| Symbol rate (kS/s) | DAC (MS/s) | SPS | Video reception test |
+|---|---|---|---|
+| 250 | 8 | 32 | Decoded; 0 TS continuity errors |
+| 125 | 1.5 | 12 | Decoded; 0 TS continuity errors |
+| 66 | 1.584 | 24 | Decoded; 10 TS continuity errors in 38 s during spectrum sweeps |
+| 33 | 1.584 | 48 | TX and spectrum measured; SDRangel video lock not obtained |
+
+At 250 kS/s, the first image peaks near ±8 MHz are 39.8–40.3 dB below the signal
+peak (RBW 10 kHz), about 15.5 dB lower than with the previous 1.5 MS/s DAC.
+[Archived 1.5 MS/s measurement](docs/32apsk/dac_1m5/measurement.json).
+
+<table>
+  <tr>
+    <td width="50%" align="center"><strong>250 kS/s</strong><br><a href="docs/spectrum_32APSK_250kBd.png"><img src="docs/spectrum_32APSK_250kBd.png" alt="32APSK 250 kS/s measured spectrum, DAC 8 MS/s" width="100%"></a></td>
+    <td width="50%" align="center"><strong>125 kS/s</strong><br><a href="docs/spectrum_32APSK_125kBd.png"><img src="docs/spectrum_32APSK_125kBd.png" alt="32APSK 125 kS/s measured spectrum" width="100%"></a></td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><strong>66 kS/s</strong><br><a href="docs/spectrum_32APSK_66kBd.png"><img src="docs/spectrum_32APSK_66kBd.png" alt="32APSK 66 kS/s measured spectrum" width="100%"></a></td>
+    <td width="50%" align="center"><strong>33 kS/s</strong><br><a href="docs/spectrum_32APSK_33kBd.png"><img src="docs/spectrum_32APSK_33kBd.png" alt="32APSK 33 kS/s measured spectrum" width="100%"></a></td>
   </tr>
 </table>
 

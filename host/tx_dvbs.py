@@ -44,6 +44,8 @@ import esp_link  # noqa: E402
 CPU_HZ = 160_000_000
 P8_MIN_PERIOD = 75                 # floor interval, including fractional-deadline overhead in the C loop
 A16_MIN_PERIOD = 80                # measured margin for symbol, sample-clock and USB work
+A32_MIN_PERIOD = 100               # slower 32APSK C path; 250 kS/s has a dedicated 8 MS/s loop
+A32_MAX_BAUD = 250_000             # one USB byte per symbol: the link carries about 260 kB/s
 DEMO_FILM = os.path.join(HERE, "..", "media", "sintel_trailer.mp4")
 
 
@@ -171,6 +173,19 @@ def auto_sps_16apsk(baud):
     raise SystemExit("16APSK: no sample rate fits the firmware timing budget")
 
 
+def auto_sps_32apsk(baud):
+    """250 kS/s uses 32 SPS and an 8 MS/s assembly loop. Other rates use the
+    six-tap C loop with 4..64 SPS and fractional deadlines, at most 1.6 MS/s."""
+    if not 2000 <= baud <= A32_MAX_BAUD:
+        raise SystemExit(f"32APSK: --baud must be 2000 .. {A32_MAX_BAUD} Bd (one USB byte per symbol)")
+    if baud == 250000:
+        return 8000000 // baud
+    for sps in range(64, 3, -1):
+        if CPU_HZ // (baud * sps) >= A32_MIN_PERIOD:
+            return sps
+    raise SystemExit("32APSK: no sample rate fits the firmware timing budget")
+
+
 def auto_sps_8psk(baud):
     """8PSK runs at 8 MS/s in the assembly loops (lutg_psk8.S: 16..64 samples per symbol, i.e. 125..500 kBd, the rate within 1 %; lutg_p8s8.S: 1 MBd, 8 samples
     per symbol, 3 bits per symbol on the USB link). Below 125 kBd the tables of 1024 x S bytes would not fit at 8 MS/s: a C loop with a slower DAC (a store every
@@ -193,6 +208,10 @@ def output_baud(baud, sps, modulation):
     if modulation == "8psk" and period != 20 and 16 <= sps <= 64 and CPU_HZ // sample_hz >= P8_MIN_PERIOD:
         return float(baud)
     if modulation == "16apsk" and period != 20 and 4 <= sps <= 24 and CPU_HZ // sample_hz >= A16_MIN_PERIOD:
+        return float(baud)
+    if modulation == "32apsk" and 4 <= sps <= 64 and CPU_HZ // sample_hz >= A32_MIN_PERIOD:
+        return float(baud)
+    if modulation == "32apsk" and (baud, sps) in ((250000, 32),):
         return float(baud)
     generic = (modulation == "8psk" and 16 <= sps <= 64 and period == 20) or (modulation == "qpsk" and 16 <= sps <= 232 and period in (20, 24)) or (modulation == "16apsk" and 16 <= sps <= 24 and period == 20)
     if generic and CPU_HZ // baud == period * sps:
@@ -227,14 +246,16 @@ def main():
     ap.add_argument("--baud", type=int, default=1000000, help="symbol rate [Bd], 2000..1000000 (e.g. 33000 for narrow-band DATV)")
     ap.add_argument("--fec", default="1/2", help="code rate: DVB-S 1/2 2/3 3/4 5/6 7/8; with --dvbs2 1/4 1/3 2/5 1/2 3/5 2/3 3/4 4/5 5/6 8/9 9/10 (short frames: no 9/10)")
     ap.add_argument("--dvbs2", action="store_true", help="DVB-S2 instead of DVB-S")
-    ap.add_argument("--mod", default="qpsk", choices=("qpsk", "8psk", "16apsk"),
-                    help="DVB-S2 modulation (8PSK: code rates 3/5 2/3 3/4 5/6 8/9 9/10, 10..500 kBd and 1 MBd; 16APSK: code rates 2/3 3/4 4/5 5/6 8/9 9/10, 2..500 kBd and 1 MBd)")
+    ap.add_argument("--mod", default="qpsk", choices=("qpsk", "8psk", "16apsk", "32apsk"),
+                    help="DVB-S2 modulation (8PSK: code rates 3/5 2/3 3/4 5/6 8/9 9/10, 10..500 kBd and 1 MBd; 16APSK: code rates 2/3 3/4 4/5 5/6 8/9 9/10, 2..500 kBd and 1 MBd; "
+                         "32APSK: code rates 3/4 4/5 5/6 8/9 9/10, 2..250 kBd)")
     ap.add_argument("--frame", default="normal", choices=("normal", "short"), help="DVB-S2 FECFRAME size (normal 64800 bits, short 16200)")
     ap.add_argument("--pilots", action="store_true", help="DVB-S2 pilots (36 symbols after every 16 slots)")
-    ap.add_argument("--sps", type=int, default=0, help="DAC samples per symbol (16APSK: 4..24; QPSK: 4/8/16 or 16..232; 8PSK: 8 or 16..64); 0 = automatic: the hand-scheduled 8 / 6.67 MS/s loops when they fit the symbol rate, else the most that keeps the output at or below 4 MS/s")
+    ap.add_argument("--apsk-pl", choices=("outer", "unit"), default="outer", help="32APSK PL symbol radius: outer (default, preserves outer-radius-one normalization) or unit (E=1 payload, compatible with SDRangel)")
+    ap.add_argument("--sps", type=int, default=0, help="DAC samples per symbol (32APSK: 4..64; 16APSK: 4..24; QPSK: 4/8/16 or 16..232; 8PSK: 8 or 16..64); 0 = automatic: the hand-scheduled 8 / 6.67 MS/s loops when they fit the symbol rate, else the most that keeps the output at or below 4 MS/s")
     ap.add_argument("--ifm", type=int, default=0, help="centre = LO + ifm * baud (puts the LO leakage outside the signal)")
-    ap.add_argument("--amp", type=int, default=0, help="peak amplitude in DAC codes (1..480); 0 = 300 for QPSK, 420 for 8PSK/16APSK")
-    ap.add_argument("--target", type=int, default=0, help="ESP buffer fill [pairs of 2 bytes]: default 3000 for QPSK, 2500 for 16APSK; at 1 MBd, 6000 for 8PSK or 7000 for 16APSK")
+    ap.add_argument("--amp", type=int, default=0, help="peak amplitude in DAC codes (1..480); 0 = 300 for QPSK, 400 for 32APSK, 420 for 8PSK/16APSK")
+    ap.add_argument("--target", type=int, default=0, help="ESP buffer fill [pairs of 2 bytes]: default 3000 for QPSK, 2500 for 16APSK/slow 32APSK, 3500 for 32APSK at 250 kS/s; at 1 MBd, 6000 for 8PSK or 7000 for 16APSK")
     ap.add_argument("--film", help="video file to encode and loop (default: the demo film)")
     ap.add_argument("--width", type=int, default=640, help="--film: picture width")
     ap.add_argument("--video-k", type=int, default=0, help="--film/--test: video bit rate [kb/s] (0 = from the channel capacity)")
@@ -255,17 +276,28 @@ def main():
         raise SystemExit("transmission only in the 13 cm band (2300..2450 MHz)")
     if a.mod != "qpsk" and not a.dvbs2:
         raise SystemExit(f"--mod {a.mod} needs --dvbs2")
+    if a.apsk_pl == "unit" and a.mod != "32apsk":
+        raise SystemExit("--apsk-pl unit requires --dvbs2 --mod 32apsk")
     if not a.amp:
-        a.amp = 420 if a.mod != "qpsk" else 300                        # 8PSK and 16APSK: the tables are scaled to the worst case, so more than QPSK's 300 fits; above ~430 the output compresses (skirts up, no more signal)
+        a.amp = 400 if a.mod == "32apsk" else 420 if a.mod != "qpsk" else 300                        # 8PSK and 16APSK: the tables are scaled to the worst case, so more than QPSK's 300 fits; above ~430 the output compresses (skirts up, no more signal)
     if a.mod == "16apsk" and not 2000 <= a.baud <= 500000:
         auto_sps_16apsk(a.baud)     # reject unsupported rates even with an explicit --sps
+    if a.mod == "32apsk" and not 2000 <= a.baud <= A32_MAX_BAUD:
+        auto_sps_32apsk(a.baud)     # reject unsupported rates even with an explicit --sps
     if not a.sps:
-        a.sps = auto_sps_16apsk(a.baud) if a.mod == "16apsk" else auto_sps_8psk(a.baud) if a.mod == "8psk" else auto_sps(a.baud)
+        a.sps = auto_sps_32apsk(a.baud) if a.mod == "32apsk" else auto_sps_16apsk(a.baud) if a.mod == "16apsk" else auto_sps_8psk(a.baud) if a.mod == "8psk" else auto_sps(a.baud)
+    a32fast = a.mod == "32apsk" and (a.baud, a.sps) in ((250000, 32),)
+    if a.mod == "32apsk" and (not 4 <= a.sps <= 64 or (not a32fast and CPU_HZ // (a.baud * a.sps) < A32_MIN_PERIOD)):
+        raise SystemExit("32APSK: use 32 SPS at 250 kS/s (8 MS/s), or 4..64 SPS with at least 100 cycles per sample")
     a16s8 = a.mod == "16apsk" and a.baud == 1000000
     if a16s8 and a.sps != 8:
         raise SystemExit("16APSK at 1 MS/s requires --sps 8")
     if not a.target:
-        a.target = 6000 if a.mod == "8psk" and a.sps == 8 else (7000 if a16s8 else 2500) if a.mod == "16apsk" else 3000
+        a.target = 6000 if a.mod == "8psk" and a.sps == 8 else (7000 if a16s8 else 2500) if a.mod == "16apsk" else 2500 if a.mod == "32apsk" else 3000     # the 16/32APSK rings are 8 KB
+        if a32fast:
+            a.target = 3500
+    if a.mod == "32apsk" and not 64 <= a.target <= 4000:
+        raise SystemExit("32APSK --target exceeds the symbol ring capacity")
     baud_act = output_baud(a.baud, a.sps, a.mod)
     if (a.mod == "8psk" and 460000 < baud_act < 1000000) or (a.mod == "16apsk" and 460000 < baud_act < 1000000):
         print(f"note: {a.mod.upper()} at {baud_act / 1e3:.0f} kBd needs {baud_act / 2e3:.0f} kB/s over the USB link to the ESP, which carries about 262 kB/s at 500 kBd and depends on the ESP's read rate: "
@@ -280,7 +312,7 @@ def main():
     try:
         if a.dvbs2:
             cap = dvbs2.ts_rate(baud_act, a.fec, a.frame, a.pilots, a.mod)
-            enc = dvbs2.Encoder(a.fec, a.frame, a.pilots, swap_iq=a.swap_iq, invert=a.invert, mod=a.mod, bits3=a.sps == 8)
+            enc = dvbs2.Encoder(a.fec, a.frame, a.pilots, swap_iq=a.swap_iq, invert=a.invert, mod=a.mod, bits3=a.sps == 8, apsk_pl=a.apsk_pl)
         else:
             if a.fec not in dvbs.PUNCT:
                 raise ValueError(f"DVB-S code rate: {', '.join(dvbs.PUNCT)} (DVB-S2: --dvbs2)")
@@ -293,17 +325,20 @@ def main():
     link = esp_link.Link(esp_link.find_port(a.port))
     try:
         secs = int(a.seconds) + 30 if a.seconds else 86400
-        cmd = {"8psk": "PSK8T", "16apsk": "A16T"}.get(a.mod, "QPSKT")
-        gam = f" {round(100 * dvbs2.APSK16_GAMMA[a.fec])}" if a.mod == "16apsk" else ""         # ring ratio R2 / R1 x 100 of the code rate
+        cmd = {"8psk": "PSK8T", "16apsk": "A16T", "32apsk": "A32T"}.get(a.mod, "QPSKT")
+        gam = (f" {round(100 * dvbs2.APSK16_GAMMA[a.fec])}" if a.mod == "16apsk"                       # ring ratio R2 / R1 x 100 of the code rate
+               else " %d %d" % tuple(round(100 * x) for x in dvbs2.APSK32_GAMMA[a.fec]) if a.mod == "32apsk" else "")     # R2 / R1 and R3 / R1 x 100
         info = link.start(f"{cmd} {khz / 1000:.3f} {a.baud} {a.sps} {a.amp} {secs} {a.ifm} {a.target} {dc4[0]} {dc4[1]} {gq} {ph}{gam}")
         kv = dict(zip(info.split()[2::2], info.split()[3::2]))
+        if a.mod == "32apsk" and a.apsk_pl == "unit" and int(kv.get("PLPTS", "0")) < 4:
+            raise SystemExit("This firmware has no unit-radius PL points; build and flash firmware/ first")
         lo_true = float(kv["LO"]) * (1 + a.ppm * 1e-6)
         std = f"DVB-S2 {a.mod.upper()} {a.frame} frame{', pilots' if a.pilots else ''}" if a.dvbs2 else "DVB-S"
         print(f"{info}\n" + ("UNMODULATED CARRIER (--cw)\n" if a.cw else "") + f"spectrum centre {(lo_true + if_hz) / 1e6:.6f} MHz (requested {a.freq:.6f}), {baud_act:.1f} Bd, "
               f"{std} FEC {a.fec}, RRC 0.35 occupies {baud_act * 1.35 / 1e3:.0f} kHz, TS capacity {cap / 1e3:.0f} kb/s")
         # Large writes keep USB busy while the encoder prepares the next frame.
         # At 1 MBd 16APSK needs 500 kB/s; its loop requires full 64-byte packets.
-        min_todo, max_chunk = (400, 4096) if a16s8 else (400, 2048) if a.sps == 8 and a.mod == "8psk" else (32, 1024)
+        min_todo, max_chunk = (400, 4096) if a16s8 else (64, 2048) if a32fast else (400, 2048) if a.sps == 8 and a.mod == "8psk" else (32, 1024)
         buf = b""
         # The encoder runs in its own thread, ahead of the USB writes: the kernel takes about one write at a time, so encoding between two writes leaves the
         # link idle (a loop that encodes and writes alternately delivered 360 kB/s, a pre-encoded stream 420 kB/s)
@@ -327,8 +362,8 @@ def main():
                     except queue.Empty:
                         break
                 nb = min(nb, len(buf))
-                if a16s8:
-                    nb -= nb % 64    # full USB packets; the 1 MS/s loop drains eight-byte groups
+                if a16s8 or a32fast:
+                    nb -= nb % 64    # full USB packets for the 16APSK 1 MS/s and 32APSK 8 MS/s loops
                 if nb:
                     link.send(buf[:nb])                                   # raw symbol bytes, no framing
                     buf = buf[nb:]
@@ -346,7 +381,7 @@ def main():
         except NameError:
             pass
         src.close()
-        print(link.finish(send_stop=not a16s8))
+        print(link.finish(send_stop=not (a16s8 or a32fast)))
 
 
 if __name__ == "__main__":

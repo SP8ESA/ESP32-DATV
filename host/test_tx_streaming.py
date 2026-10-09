@@ -3,7 +3,7 @@ import queue
 import threading
 import unittest
 
-from tx_dvbs import CPU_HZ, P8_MIN_PERIOD, A16_MIN_PERIOD, auto_sps_8psk, auto_sps_16apsk, feed_symbols, output_baud
+from tx_dvbs import CPU_HZ, P8_MIN_PERIOD, A16_MIN_PERIOD, A32_MIN_PERIOD, A32_MAX_BAUD, auto_sps_8psk, auto_sps_16apsk, auto_sps_32apsk, feed_symbols, output_baud
 
 
 class ObservedQueue(queue.Queue):
@@ -116,6 +116,24 @@ class StreamingTests(unittest.TestCase):
         for baud in [0, 1999, 500001, 999999, 1000001]:
             with self.subTest(baud=baud), self.assertRaises(SystemExit):
                 auto_sps_16apsk(baud)
+
+    def test_32apsk_rates_keep_the_minimum_interval_and_the_average_rate(self):
+        rates = [(2000, 64), (33000, 48), (66000, 24), (100000, 16), (125000, 12), (200000, 8), (250000, 32)]
+        for baud, expected_sps in rates:
+            with self.subTest(baud=baud):
+                sps = auto_sps_32apsk(baud)
+                self.assertEqual(sps, expected_sps)
+                self.assertEqual(output_baud(baud, sps, "32apsk"), baud)
+                if baud == 250000:
+                    self.assertEqual(baud * sps, 8000000)
+                else:
+                    self.assertGreaterEqual(CPU_HZ // (baud * sps), A32_MIN_PERIOD)
+
+    def test_32apsk_rate_limits(self):
+        self.assertEqual(A32_MAX_BAUD, 250000)
+        for baud in [0, 1999, 250001, 333000, 1000000]:
+            with self.subTest(baud=baud), self.assertRaises(SystemExit):
+                auto_sps_32apsk(baud)
 
     def test_fractional_rate_matches_explicit_samples_per_symbol(self):
         self.assertEqual(output_baud(33000, 48, "8psk"), 33000)

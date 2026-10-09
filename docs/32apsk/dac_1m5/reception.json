@@ -1,0 +1,22 @@
+{
+  "bytes": 2314844,
+  "ts_packets": 12313,
+  "trailing_bytes": 0,
+  "sync_errors": 0,
+  "transport_error_packets": 0,
+  "continuity_errors": [],
+  "remux_returncode": 0,
+  "decode_returncode": 0,
+  "decode_errors": "",
+  "modulation": "32APSK",
+  "fec": "3/4",
+  "symbol_rate": 250000,
+  "dac_sample_rate": 1500000,
+  "samples_per_symbol": 6,
+  "pilots": true,
+  "apsk_pl": "unit",
+  "recording_seconds": 24,
+  "decoded_section_seconds": 10,
+  "remux_startup_note": "Initial demux probing started mid-GOP before SPS/PPS arrived; the keyframe-aligned 10-second section decodes without errors.",
+  "remux_startup_warning_lines": 192
+}

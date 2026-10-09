@@ -1,0 +1,126 @@
+{
+  "started_at": "2026-10-09T16:18:00+02:00",
+  "tx": {
+    "pid": 133319,
+    "command": [
+      "/usr/bin/python3",
+      "-u",
+      "-B",
+      "host/tx_dvbs.py",
+      "--freq",
+      "2370",
+      "--baud",
+      "250000",
+      "--dvbs2",
+      "--mod",
+      "32apsk",
+      "--fec",
+      "3/4",
+      "--frame",
+      "normal",
+      "--apsk-pl",
+      "unit",
+      "--pilots",
+      "--ppm",
+      "12",
+      "--port",
+      "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00"
+    ],
+    "log": "/home/sp8esa/Pulpit/esp32/nagrania/32apsk_implementation_20261009/restored_video_after_words.log"
+  },
+  "ack": "OK QPSKT LO 2369971619 BAUD 250000.000 OUT 1500000 AMP 400 SPS 6 PERIOD 106 IF 0 TARGET 2500 MOD 32APSK REM 1000000 DIV 1500000 SREM 0 SDIV 1 PLPTS 4",
+  "requested_baud": 250000,
+  "dac_hz": 1500000,
+  "sps": 6,
+  "amp": 400,
+  "source": "live video",
+  "fec": "3/4",
+  "pilots": true,
+  "apsk_pl": "unit",
+  "passes": 3,
+  "normalization": "peak image relative to main-channel peak, same RBW within each scan",
+  "limitations": [
+    "Relative spectral peaks are not integrated band powers.",
+    "Three-bin smoothing is used only for the plotted peak values."
+  ],
+  "instrument": "version\r\ntinySA4_v1.4-217-gc5dd31f\r\nHW Version:V0.4.6 \r\nch> ",
+  "previous_attenuation": "attenuate\r\nusage: attenuate 0..31|auto\r\n   7\r\nch> ",
+  "previous_rbw": "rbw\r\nusage: rbw 0.2..850|auto\r\n10kHz\r\nch> ",
+  "previous_calculation": "calc\r\nusage: calc [{trace#}] off|minh|maxh|maxd|aver4|aver16|aver|quasi|log|lin\r\nOFF\r\nch> ",
+  "wide": {
+    "rbw_khz": 30,
+    "passes": 3,
+    "segments_per_pass": 3,
+    "points": 1348,
+    "max_step_hz": 22272.0,
+    "centroid_alignment": false,
+    "reference_hz": 2369998959.075261,
+    "centroid_drift_hz": 13925.317481994629,
+    "signal_top_dbm": -4.008095123596258,
+    "raw_file": "32apsk_250kBd_wide.npz"
+  },
+  "zoom": {
+    "rbw_khz": 10,
+    "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n10kHz\r\nch> ",
+    "passes": 3,
+    "segments_per_pass": 3,
+    "points": 1348,
+    "max_step_hz": 5568.0,
+    "centroid_alignment": true,
+    "reference_hz": 2370010470.3643136,
+    "centroid_drift_hz": 9820.825652599335,
+    "signal_top_dbm": -9.183745437701283,
+    "raw_file": "32apsk_250kBd_zoom.npz",
+    "duration_seconds": 21.45
+  },
+  "figure": "spectrum_32APSK_250kBd.png",
+  "csv_files": [
+    "32apsk_250kBd_wide.csv",
+    "32apsk_250kBd_zoom.csv"
+  ],
+  "aliases": [
+    {
+      "frequency_offset_mhz": -1.4024523643136024,
+      "level_db": -27.040843489170413,
+      "near_floor": false
+    },
+    {
+      "frequency_offset_mhz": 1.4037836356863975,
+      "level_db": -26.01135557820583,
+      "near_floor": false
+    }
+  ],
+  "wide_floor_db": -61.621224841309875,
+  "reference_hz": 2370010470.3643136,
+  "images_10khz": [
+    {
+      "order": 1,
+      "side": -1,
+      "offset_hz": -1388532.3643136024,
+      "peak_relative_db": -24.376363487820115,
+      "rbw_khz": 10
+    },
+    {
+      "order": 1,
+      "side": 1,
+      "offset_hz": 1384295.6356863976,
+      "peak_relative_db": -24.54442140433688,
+      "rbw_khz": 10
+    },
+    {
+      "order": 2,
+      "side": -1,
+      "offset_hz": -2897441.3643136024,
+      "peak_relative_db": -31.202187513896035,
+      "rbw_khz": 10
+    },
+    {
+      "order": 2,
+      "side": 1,
+      "offset_hz": 3110353.6356863976,
+      "peak_relative_db": -31.940247982235725,
+      "rbw_khz": 10
+    }
+  ],
+  "completed_at": "2026-10-09T16:18:24+02:00"
+}

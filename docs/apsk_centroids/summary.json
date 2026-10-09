@@ -1,0 +1,182 @@
+[
+  {
+    "name": "baseline",
+    "amp": 420,
+    "samples": 86016,
+    "payload_gain": 0.8775833449945595,
+    "rings": [
+      {
+        "expected_radius": 0.3605652686,
+        "measured_radius": 0.3187506434561098,
+        "radial_error_percent": -11.59696420740901,
+        "symbols": [
+          12,
+          13,
+          14,
+          15
+        ],
+        "centroid_radius_spread": 0.0016942331865344577,
+        "expected_ratio_to_inner": 1.0,
+        "measured_ratio_to_inner": 1.0
+      },
+      {
+        "expected_radius": 1.135780596,
+        "measured_radius": 0.9964972391765792,
+        "radial_error_percent": -12.263227362216778,
+        "symbols": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "centroid_radius_spread": 0.001544548632448913,
+        "expected_ratio_to_inner": 3.149999999750392,
+        "measured_ratio_to_inner": 3.126259537461267
+      }
+    ],
+    "centroid_error_after_common_gain_percent": 0.26804396078607595
+  },
+  {
+    "name": "rx_gain_minus8",
+    "amp": 420,
+    "samples": 87040,
+    "payload_gain": 0.8783955380623234,
+    "rings": [
+      {
+        "expected_radius": 0.3605652686,
+        "measured_radius": 0.3192814311683758,
+        "radial_error_percent": -11.449754323792948,
+        "symbols": [
+          12,
+          13,
+          14,
+          15
+        ],
+        "centroid_radius_spread": 0.004424218116772109,
+        "expected_ratio_to_inner": 1.0,
+        "measured_ratio_to_inner": 1.0
+      },
+      {
+        "expected_radius": 1.135780596,
+        "measured_radius": 0.9974122255506379,
+        "radial_error_percent": -12.182667227866794,
+        "symbols": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "centroid_radius_spread": 0.005202259426751849,
+        "expected_ratio_to_inner": 3.149999999750392,
+        "measured_ratio_to_inner": 3.1239280715471485
+      }
+    ],
+    "centroid_error_after_common_gain_percent": 0.8442016511394713
+  },
+  {
+    "name": "amp300",
+    "amp": 300,
+    "samples": 87040,
+    "payload_gain": 0.8820511144506836,
+    "rings": [
+      {
+        "expected_radius": 0.3605652686,
+        "measured_radius": 0.32011667458274334,
+        "radial_error_percent": -11.218105996262517,
+        "symbols": [
+          12,
+          13,
+          14,
+          15
+        ],
+        "centroid_radius_spread": 0.002638590434569543,
+        "expected_ratio_to_inner": 1.0,
+        "measured_ratio_to_inner": 1.0
+      },
+      {
+        "expected_radius": 1.135780596,
+        "measured_radius": 1.0015997090043152,
+        "radial_error_percent": -11.813979519305406,
+        "symbols": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "centroid_radius_spread": 0.0024465766476281466,
+        "expected_ratio_to_inner": 3.149999999750392,
+        "measured_ratio_to_inner": 3.128858283655021
+      }
+    ],
+    "centroid_error_after_common_gain_percent": 0.3962429812551937
+  },
+  {
+    "name": "amp160",
+    "amp": 160,
+    "samples": 87040,
+    "payload_gain": 0.8759963366638919,
+    "rings": [
+      {
+        "expected_radius": 0.3605652686,
+        "measured_radius": 0.31905048173669626,
+        "radial_error_percent": -11.513806369786261,
+        "symbols": [
+          12,
+          13,
+          14,
+          15
+        ],
+        "centroid_radius_spread": 0.0029367108661003207,
+        "expected_ratio_to_inner": 1.0,
+        "measured_ratio_to_inner": 1.0
+      },
+      {
+        "expected_radius": 1.135780596,
+        "measured_radius": 0.9946063677953764,
+        "radial_error_percent": -12.429709461652372,
+        "symbols": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "centroid_radius_spread": 0.0028270345359255843,
+        "expected_ratio_to_inner": 3.149999999750392,
+        "measured_ratio_to_inner": 3.1173949726745693
+      }
+    ],
+    "centroid_error_after_common_gain_percent": 0.48755229759988244
+  }
+]

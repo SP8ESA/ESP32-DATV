@@ -1,0 +1,1595 @@
+{
+  "started_at": "2026-10-09T18:13:50+02:00",
+  "firmware_commit": "7209d3da6b17e0201f8c308eb09dd210c52c8114",
+  "frequency_mhz": 2370,
+  "modulations": [
+    "32apsk"
+  ],
+  "symbol_rates_baud": [
+    33000,
+    66000,
+    125000,
+    250000
+  ],
+  "amp": 400,
+  "source": "live video",
+  "pilots": true,
+  "apsk_pl": "unit",
+  "ppm": 12,
+  "analyzer_internal_attenuation_db": 10,
+  "passes": 3,
+  "smoothing_bins": 3,
+  "normalization": "each panel relative to its smoothed central signal top",
+  "bandplan": "https://wiki.batc.org.uk/QO-100_WB_Bandplan",
+  "rates": [
+    {
+      "figure": "spectrum_32APSK_33kBd.png",
+      "csv_files": [
+        "32apsk_33kBd_wide.csv",
+        "32apsk_33kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -1.5735705171275138,
+          "level_db": -45.513903506844294,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 1.589013482872486,
+          "level_db": -46.635000331585886,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -68.82897547790874,
+      "reference_hz": 2370003414.5171275,
+      "modulation": "32apsk",
+      "standard": "DVB-S2",
+      "fec": "3/4",
+      "frame": "normal",
+      "pilots": true,
+      "apsk_pl": "unit",
+      "amp": 400,
+      "requested_baud": 33000,
+      "actual_baud": 33000.0,
+      "dac_hz": 1584000.0,
+      "sps": 48,
+      "period": 101,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "33000",
+        "--mod",
+        "32apsk",
+        "--fec",
+        "3/4",
+        "--frame",
+        "normal",
+        "--amp",
+        "400",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00",
+        "--dvbs2",
+        "--pilots",
+        "--apsk-pl",
+        "unit"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 33000.000 OUT 1584000 AMP 400 SPS 48 PERIOD 101 IF 0 TARGET 2500 MOD 32APSK REM 16000 DIV 1584000 SREM 0 SDIV 1 PLPTS 4",
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2370001896.5330276,
+        "centroid_drift_hz": 755.1926889419556,
+        "signal_top_dbm": 2.107468106392516,
+        "raw_file": "32apsk_33kBd_wide.npz",
+        "duration_seconds": 13.04
+      },
+      "zoom": {
+        "rbw_khz": 1,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n1000Hz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 1,
+        "points": 450,
+        "max_step_hz": 441.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370003414.5171275,
+        "centroid_drift_hz": 558.7794713973999,
+        "signal_top_dbm": -10.708212811160179,
+        "raw_file": "32apsk_33kBd_zoom.npz",
+        "duration_seconds": 12.63
+      },
+      "tx_summary": "TX END symbols=739836240 bytes_in=15394346 underruns=18910 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          0,
+          2003
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1479
+        ],
+        [
+          1476,
+          1479
+        ],
+        [
+          452,
+          1653
+        ],
+        [
+          1476,
+          1479
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ]
+      ]
+    },
+    {
+      "figure": "spectrum_32APSK_66kBd.png",
+      "csv_files": [
+        "32apsk_66kBd_wide.csv",
+        "32apsk_66kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -1.5959251124315261,
+          "level_db": -39.53225428306139,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 1.5889308875684738,
+          "level_db": -38.50961600315366,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -66.39066593421833,
+      "reference_hz": 2370003497.1124315,
+      "modulation": "32apsk",
+      "standard": "DVB-S2",
+      "fec": "3/4",
+      "frame": "normal",
+      "pilots": true,
+      "apsk_pl": "unit",
+      "amp": 400,
+      "requested_baud": 66000,
+      "actual_baud": 66000.0,
+      "dac_hz": 1584000.0,
+      "sps": 24,
+      "period": 101,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "66000",
+        "--mod",
+        "32apsk",
+        "--fec",
+        "3/4",
+        "--frame",
+        "normal",
+        "--amp",
+        "400",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00",
+        "--dvbs2",
+        "--pilots",
+        "--apsk-pl",
+        "unit"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 66000.000 OUT 1584000 AMP 400 SPS 24 PERIOD 101 IF 0 TARGET 2500 MOD 32APSK REM 16000 DIV 1584000 SREM 0 SDIV 1 PLPTS 4",
+      "tx_summary": "TX END symbols=126517416 bytes_in=5232824 underruns=38736 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          0,
+          1638
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2370002962.601962,
+        "centroid_drift_hz": 3927.8674449920654,
+        "signal_top_dbm": -0.22531271907269534,
+        "raw_file": "32apsk_66kBd_wide.npz"
+      },
+      "zoom": {
+        "rbw_khz": 1,
+        "passes": 3,
+        "segments_per_pass": 2,
+        "points": 899,
+        "max_step_hz": 441.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370003497.1124315,
+        "centroid_drift_hz": 1045.771770954132,
+        "signal_top_dbm": -13.107251886729259,
+        "raw_file": "32apsk_66kBd_zoom.npz"
+      },
+      "export_note": "Exported from the completed raw sweeps after the concurrent reception quality check interrupted the measurement script."
+    },
+    {
+      "figure": "spectrum_32APSK_125kBd.png",
+      "csv_files": [
+        "32apsk_125kBd_wide.csv",
+        "32apsk_125kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -1.4623952994837761,
+          "level_db": -31.238285006069265,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 1.455198700516224,
+          "level_db": -30.643335407942175,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -63.04777445326476,
+      "reference_hz": 2370003598.299484,
+      "modulation": "32apsk",
+      "standard": "DVB-S2",
+      "fec": "3/4",
+      "frame": "normal",
+      "pilots": true,
+      "apsk_pl": "unit",
+      "amp": 400,
+      "requested_baud": 125000,
+      "actual_baud": 125000.0,
+      "dac_hz": 1500000.0,
+      "sps": 12,
+      "period": 106,
+      "command": [
+        "/usr/bin/python3",
+        "-u",
+        "-B",
+        "host/tx_dvbs.py",
+        "--freq",
+        "2370.000",
+        "--baud",
+        "125000",
+        "--mod",
+        "32apsk",
+        "--fec",
+        "3/4",
+        "--frame",
+        "normal",
+        "--amp",
+        "400",
+        "--ppm",
+        "12",
+        "--port",
+        "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00",
+        "--dvbs2",
+        "--pilots",
+        "--apsk-pl",
+        "unit"
+      ],
+      "acknowledgement": "OK QPSKT LO 2369971619 BAUD 125000.000 OUT 1500000 AMP 400 SPS 12 PERIOD 106 IF 0 TARGET 2500 MOD 32APSK REM 1000000 DIV 1500000 SREM 0 SDIV 1 PLPTS 4",
+      "tx_summary": "TX END symbols=53157972 bytes_in=4357226 underruns=72606 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffer_reports": [
+        [
+          0,
+          1647
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ],
+        [
+          1476,
+          1476
+        ]
+      ],
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2370000356.4269686,
+        "centroid_drift_hz": 13214.42046880722,
+        "signal_top_dbm": -2.814462648098553,
+        "raw_file": "32apsk_125kBd_wide.npz",
+        "duration_seconds": 13.04
+      },
+      "zoom": {
+        "rbw_khz": 3,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n3kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 1,
+        "points": 450,
+        "max_step_hz": 1671.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370003598.299484,
+        "centroid_drift_hz": 2855.6148352622986,
+        "signal_top_dbm": -10.690486545451476,
+        "raw_file": "32apsk_125kBd_zoom.npz",
+        "duration_seconds": 11.22
+      }
+    },
+    {
+      "started_at": "2026-10-09T18:00:21+02:00",
+      "tx": {
+        "pid": 213084,
+        "command": [
+          "/usr/bin/python3",
+          "-u",
+          "-B",
+          "host/tx_dvbs.py",
+          "--freq",
+          "2370",
+          "--baud",
+          "250000",
+          "--dvbs2",
+          "--mod",
+          "32apsk",
+          "--fec",
+          "3/4",
+          "--frame",
+          "normal",
+          "--apsk-pl",
+          "unit",
+          "--pilots",
+          "--ppm",
+          "12",
+          "--port",
+          "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00"
+        ],
+        "log": "/home/sp8esa/Pulpit/esp32/nagrania/32apsk_8ms_20261009/rf/video_32apsk_250k.log"
+      },
+      "ack": "OK QPSKT LO 2369971619 BAUD 250000.000 OUT 8000000 AMP 400 SPS 32 PERIOD 20 IF 0 TARGET 3500 MOD 32APSK REM 0 DIV 1 SREM 0 SDIV 1 PLPTS 4",
+      "requested_baud": 250000,
+      "dac_hz": 8000000,
+      "sps": 32,
+      "amp": 400,
+      "source": "live video",
+      "fec": "3/4",
+      "pilots": true,
+      "apsk_pl": "unit",
+      "passes": 3,
+      "normalization": "peak image relative to main-channel peak, same RBW within each scan",
+      "limitations": [
+        "Relative spectral peaks are not integrated band powers.",
+        "Three-bin smoothing is used only for the plotted peak values."
+      ],
+      "instrument": "version\r\ntinySA4_v1.4-217-gc5dd31f\r\nHW Version:V0.4.6 \r\nch> ",
+      "previous_attenuation": "attenuate\r\nusage: attenuate 0..31|auto\r\n   7\r\nch> ",
+      "previous_rbw": "rbw\r\nusage: rbw 0.2..850|auto\r\n10kHz\r\nch> ",
+      "previous_calculation": "calc\r\nusage: calc [{trace#}] off|minh|maxh|maxd|aver4|aver16|aver|quasi|log|lin\r\nOFF\r\nch> ",
+      "images_scan": {
+        "rbw_khz": 10,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n10kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 6,
+        "points": 2695,
+        "max_step_hz": 6682.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370003498.4202623,
+        "centroid_drift_hz": 4151.460069656372,
+        "signal_top_dbm": -8.507177046898253,
+        "raw_file": "32apsk_250kBd_images.npz",
+        "duration_seconds": 41.89
+      },
+      "wide": {
+        "rbw_khz": 30,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n30kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 3,
+        "points": 1348,
+        "max_step_hz": 22272.0,
+        "centroid_alignment": false,
+        "reference_hz": 2370000809.841201,
+        "centroid_drift_hz": 9444.547157287598,
+        "signal_top_dbm": -4.386886296159262,
+        "raw_file": "32apsk_250kBd_wide.npz",
+        "duration_seconds": 13.04
+      },
+      "zoom": {
+        "rbw_khz": 3,
+        "rbw_response": "rbw\r\nusage: rbw 0.2..850|auto\r\n3kHz\r\nch> ",
+        "passes": 3,
+        "segments_per_pass": 2,
+        "points": 899,
+        "max_step_hz": 1671.0,
+        "centroid_alignment": true,
+        "reference_hz": 2370002302.564069,
+        "centroid_drift_hz": 7368.284867763519,
+        "signal_top_dbm": -13.017098671681072,
+        "raw_file": "32apsk_250kBd_zoom.npz",
+        "duration_seconds": 22.04
+      },
+      "figure": "spectrum_32APSK_250kBd.png",
+      "csv_files": [
+        "32apsk_250kBd_wide.csv",
+        "32apsk_250kBd_zoom.csv"
+      ],
+      "aliases": [
+        {
+          "frequency_offset_mhz": -8.098070564068795,
+          "level_db": -40.51787405228068,
+          "near_floor": false
+        },
+        {
+          "frequency_offset_mhz": 7.893020435931206,
+          "level_db": -39.453780014714496,
+          "near_floor": false
+        }
+      ],
+      "wide_floor_db": -62.09003228714424,
+      "reference_hz": 2370002302.564069,
+      "images_10khz": [
+        {
+          "order": 1,
+          "side": -1,
+          "offset_hz": -8101494.420262337,
+          "peak_relative_db": -40.309773166489364,
+          "rbw_khz": 10
+        },
+        {
+          "order": 1,
+          "side": 1,
+          "offset_hz": 7894051.579737663,
+          "peak_relative_db": -39.83704380944562,
+          "rbw_khz": 10
+        }
+      ],
+      "completed_at": "2026-10-09T18:01:39+02:00",
+      "modulation": "32apsk",
+      "standard": "DVB-S2",
+      "frame": "normal",
+      "actual_baud": 250000,
+      "period": 20,
+      "measurement_file": "32apsk_250kBd_measurement.json"
+    }
+  ],
+  "worker_pid": 224755,
+  "firmware_sha256": "afd8951210abe58b5b13c0b1802dc46d6b6c4b328c34550fa53383f4bf4e77ec",
+  "instrument": "version\r\ntinySA4_v1.4-217-gc5dd31f\r\nHW Version:V0.4.6 \r\nch> ",
+  "instrument_previous_attenuation": "attenuate\r\nusage: attenuate 0..31|auto\r\n  10\r\nch> ",
+  "instrument_previous_calculation": "calc\r\nusage: calc [{trace#}] off|minh|maxh|maxd|aver4|aver16|aver|quasi|log|lin\r\nOFF\r\nch> ",
+  "instrument_calculation": "calc off\r\nch> ",
+  "attenuation_response": "attenuate 10\r\nch> ",
+  "completed_at": "2026-10-09T18:27:08+02:00",
+  "firmware_worktree_dirty": true,
+  "measurement_files": [
+    "narrow_measurement.json",
+    "32apsk_250kBd_measurement.json"
+  ]
+}

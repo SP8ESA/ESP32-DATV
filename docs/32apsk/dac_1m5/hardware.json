@@ -1,0 +1,78 @@
+[
+  {
+    "baud": 33000,
+    "ack": "OK QPSKT LO 2369971619 BAUD 33000.000 OUT 1584000 AMP 400 SPS 48 PERIOD 101 IF 0 TARGET 2500 MOD 32APSK REM 16000 DIV 1584000 SREM 0 SDIV 1 PLPTS 4",
+    "stats": {
+      "symbols": 7274832,
+      "bytes_in": 132538,
+      "underruns": 19022,
+      "late_slots": 0,
+      "buffer": 0
+    },
+    "summary": "TX END symbols=7274832 bytes_in=132538 underruns=19022 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+    "buffers": [
+      [
+        0,
+        1947
+      ]
+    ]
+  },
+  {
+    "baud": 66000,
+    "ack": "OK QPSKT LO 2369971619 BAUD 66000.000 OUT 1584000 AMP 400 SPS 24 PERIOD 101 IF 0 TARGET 2500 MOD 32APSK REM 16000 DIV 1584000 SREM 0 SDIV 1 PLPTS 4",
+    "stats": {
+      "symbols": 7225512,
+      "bytes_in": 261992,
+      "underruns": 39072,
+      "late_slots": 0,
+      "buffer": 0
+    },
+    "summary": "TX END symbols=7225512 bytes_in=261992 underruns=39072 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+    "buffers": [
+      [
+        0,
+        1799
+      ],
+      [
+        1476,
+        1476
+      ]
+    ]
+  },
+  {
+    "baud": 125000,
+    "ack": "OK QPSKT LO 2369971619 BAUD 125000.000 OUT 1500000 AMP 400 SPS 12 PERIOD 106 IF 0 TARGET 2500 MOD 32APSK REM 1000000 DIV 1500000 SREM 0 SDIV 1 PLPTS 4",
+    "stats": {
+      "symbols": 6783060,
+      "bytes_in": 492000,
+      "underruns": 73256,
+      "late_slots": 0,
+      "buffer": 0
+    },
+    "summary": "TX END symbols=6783060 bytes_in=492000 underruns=73256 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+    "buffers": [
+      [
+        0,
+        1837
+      ]
+    ]
+  },
+  {
+    "baud": 250000,
+    "ack": "OK QPSKT LO 2369971619 BAUD 250000.000 OUT 1500000 AMP 400 SPS 6 PERIOD 106 IF 0 TARGET 2500 MOD 32APSK REM 1000000 DIV 1500000 SREM 0 SDIV 1 PLPTS 4",
+    "stats": {
+      "symbols": 6795306,
+      "bytes_in": 979414,
+      "underruns": 153138,
+      "late_slots": 0,
+      "buffer": 0
+    },
+    "summary": "TX END symbols=6795306 bytes_in=979414 underruns=153138 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+    "buffers": [
+      [
+        0,
+        1523
+      ]
+    ]
+  }
+]

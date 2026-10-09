@@ -1,0 +1,245 @@
+{
+  "fec": "3/4",
+  "pilots": true,
+  "apsk_pl": "unit",
+  "receiver": "SDRangel DATV / HackRF",
+  "cases": [
+    {
+      "symbol_rate": 33000,
+      "decoded_32apsk": false,
+      "video_lock_obtained": false,
+      "receiver_bandwidth_hz": 52800,
+      "acquisition_timeout_seconds": 90,
+      "tx_timing_ok": true,
+      "tx_summary": "TX END symbols=739836240 bytes_in=15394346 underruns=18910 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)"
+    },
+    {
+      "bytes": 1073856,
+      "packets": 5712,
+      "trailing_bytes": 0,
+      "sync_errors": 0,
+      "tei_errors": 0,
+      "continuity_errors": 10,
+      "error_details": [
+        {
+          "packet": 4426,
+          "pid": 257,
+          "previous": 1,
+          "current": 13
+        },
+        {
+          "packet": 4434,
+          "pid": 256,
+          "previous": 5,
+          "current": 9
+        },
+        {
+          "packet": 4480,
+          "pid": 17,
+          "previous": 11,
+          "current": 13
+        },
+        {
+          "packet": 4492,
+          "pid": 0,
+          "previous": 8,
+          "current": 10
+        },
+        {
+          "packet": 4493,
+          "pid": 4096,
+          "previous": 8,
+          "current": 10
+        },
+        {
+          "packet": 4522,
+          "pid": 256,
+          "previous": 3,
+          "current": 8
+        },
+        {
+          "packet": 4523,
+          "pid": 257,
+          "previous": 12,
+          "current": 6
+        },
+        {
+          "packet": 4537,
+          "pid": 17,
+          "previous": 13,
+          "current": 15
+        },
+        {
+          "packet": 4549,
+          "pid": 0,
+          "previous": 10,
+          "current": 12
+        },
+        {
+          "packet": 4550,
+          "pid": 4096,
+          "previous": 10,
+          "current": 12
+        }
+      ],
+      "symbol_rate": 66000,
+      "reports": [
+        {
+          "DATVDemodReport": {
+            "audioActive": 1,
+            "audioDecodeOK": 0,
+            "channelPowerDB": -19.397409439086914,
+            "cnr": 9.961017608642578,
+            "mer": 17.857601165771484,
+            "modcodCodeRate": 3,
+            "modcodModulation": 4,
+            "setByModcod": 1,
+            "symbolRate": 66000,
+            "udpRunning": 0,
+            "videoActive": 1,
+            "videoDecodeOK": 1
+          },
+          "channelType": "DATVDemod",
+          "direction": 0
+        },
+        {
+          "DATVDemodReport": {
+            "audioActive": 1,
+            "audioDecodeOK": 0,
+            "channelPowerDB": -19.0335693359375,
+            "cnr": 10.056066513061523,
+            "mer": 16.72596549987793,
+            "modcodCodeRate": 3,
+            "modcodModulation": 4,
+            "setByModcod": 1,
+            "symbolRate": 66000,
+            "udpRunning": 0,
+            "videoActive": 1,
+            "videoDecodeOK": 1
+          },
+          "channelType": "DATVDemod",
+          "direction": 0
+        },
+        {
+          "DATVDemodReport": {
+            "audioActive": 1,
+            "audioDecodeOK": 0,
+            "channelPowerDB": -18.1833553314209,
+            "cnr": 9.625948905944824,
+            "mer": 19.668079376220703,
+            "modcodCodeRate": 3,
+            "modcodModulation": 4,
+            "setByModcod": 1,
+            "symbolRate": 66000,
+            "udpRunning": 0,
+            "videoActive": 1,
+            "videoDecodeOK": 1
+          },
+          "channelType": "DATVDemod",
+          "direction": 0
+        }
+      ],
+      "duration_seconds": 38.16,
+      "warmup_seconds": 30.61,
+      "video": [
+        {
+          "codec_name": "h264",
+          "width": 320,
+          "height": 180,
+          "nb_read_frames": "117"
+        }
+      ],
+      "decode_log_bytes": 0,
+      "decoded_32apsk": true,
+      "passed": false
+    },
+    {
+      "bytes": 979104,
+      "packets": 5208,
+      "trailing_bytes": 0,
+      "sync_errors": 0,
+      "tei_errors": 0,
+      "continuity_errors": 0,
+      "error_details": [],
+      "symbol_rate": 125000,
+      "reports": [
+        {
+          "DATVDemodReport": {
+            "audioActive": 1,
+            "audioDecodeOK": 0,
+            "channelPowerDB": -19.479835510253906,
+            "cnr": 8.369017601013184,
+            "mer": 15.229089736938477,
+            "modcodCodeRate": 3,
+            "modcodModulation": 4,
+            "setByModcod": 1,
+            "symbolRate": 125000,
+            "udpRunning": 0,
+            "videoActive": 1,
+            "videoDecodeOK": 1
+          },
+          "channelType": "DATVDemod",
+          "direction": 0
+        },
+        {
+          "DATVDemodReport": {
+            "audioActive": 1,
+            "audioDecodeOK": 0,
+            "channelPowerDB": -19.850526809692383,
+            "cnr": 8.485536575317383,
+            "mer": 15.769389152526855,
+            "modcodCodeRate": 3,
+            "modcodModulation": 4,
+            "setByModcod": 1,
+            "symbolRate": 125000,
+            "udpRunning": 0,
+            "videoActive": 1,
+            "videoDecodeOK": 1
+          },
+          "channelType": "DATVDemod",
+          "direction": 0
+        }
+      ],
+      "duration_seconds": 24.28,
+      "video": [
+        {
+          "codec_name": "h264",
+          "width": 320,
+          "height": 180,
+          "nb_read_frames": "98"
+        }
+      ],
+      "decode_log_bytes": 0,
+      "decoded_32apsk": true,
+      "passed": true
+    },
+    {
+      "bytes": 2314844,
+      "packets": 12313,
+      "trailing_bytes": 0,
+      "sync_errors": 0,
+      "tei_errors": 0,
+      "continuity_errors": 0,
+      "error_details": [],
+      "duplicates": 0,
+      "pids": {
+        "256": 9678,
+        "8191": 1020,
+        "257": 1360,
+        "0": 107,
+        "4096": 107,
+        "17": 41
+      },
+      "symbol_rate": 250000,
+      "decoded_32apsk": true,
+      "video_decode_seconds": 10,
+      "decode_log_bytes": 0,
+      "passed": true
+    }
+  ],
+  "notes": [
+    "66 kS/s video was decoded, but two transport-stream gaps (10 PID continuity errors) occurred during the concurrent tinySA sweeps.",
+    "33 kS/s transmission and spectrum were measured; this receiver setup did not obtain video lock.",
+    "No claim of error-free reception is made for 33 or 66 kS/s."
+  ]
+}

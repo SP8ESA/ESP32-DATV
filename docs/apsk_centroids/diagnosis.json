@@ -1,0 +1,77 @@
+{
+  "date": "2026-10-09",
+  "modulation": "16APSK",
+  "symbol_rate": 1000000,
+  "dac_sample_rate": 8000000,
+  "fec": "2/3",
+  "pilots": true,
+  "measurement": "SDRangel 7.22.9 payload constellation coordinates after symbol recovery and PL gain control",
+  "measurement_resolution": 0.013333333333333334,
+  "main_cause": "The ESP encoder uses outer-ring indices for both PLHEADER/pilots and data. SDRangel normalizes PL symbols to amplitude 1, but its payload reference constellation uses average energy E=1.",
+  "data_inner_radius": 0.36056526858718835,
+  "data_outer_radius": 1.1357805960496432,
+  "current_pl_radius_in_data_E1_coordinates": 1.1357805960496432,
+  "predicted_receiver_gain": 0.8804517381949458,
+  "predicted_inner_radius_after_pl_gain": 0.3174603174603175,
+  "predicted_outer_radius_after_pl_gain": 1.0,
+  "predicted_inward_shift_percent": 11.954826180505417,
+  "measured_baseline": {
+    "name": "baseline",
+    "amp": 420,
+    "samples": 86016,
+    "payload_gain": 0.8775833449945595,
+    "rings": [
+      {
+        "expected_radius": 0.3605652686,
+        "measured_radius": 0.3187506434561098,
+        "radial_error_percent": -11.59696420740901,
+        "symbols": [
+          12,
+          13,
+          14,
+          15
+        ],
+        "centroid_radius_spread": 0.0016942331865344577,
+        "expected_ratio_to_inner": 1.0,
+        "measured_ratio_to_inner": 1.0
+      },
+      {
+        "expected_radius": 1.135780596,
+        "measured_radius": 0.9964972391765792,
+        "radial_error_percent": -12.263227362216778,
+        "symbols": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "centroid_radius_spread": 0.001544548632448913,
+        "expected_ratio_to_inner": 3.149999999750392,
+        "measured_ratio_to_inner": 3.126259537461267
+      }
+    ],
+    "centroid_error_after_common_gain_percent": 0.26804396078607595
+  },
+  "controls": "TX AMP 300 and 160, and RX VGA gain reduced by 8 dB. The 12% displacement remains in every case.",
+  "remaining_error": "The measured outer/inner ratio is 3.117..3.129 versus 3.15; these GUI-coordinate measurements do not identify the small residual error separately from quantization, timing, filter truncation, noise or analog distortion.",
+  "32apsk_prediction_not_rf_measurement": {
+    "fec": "3/4",
+    "outer_radius": 1.2768096671118951,
+    "gain": 0.7832020901454873,
+    "inward_shift_percent": 21.679790985451277
+  },
+  "standards_note": "ETSI permits either E=1 or outer-ring radius=1 for APSK. The interoperability mismatch here is the use of the outer-ring scale relative to PL symbols with an E=1 payload reference in SDRangel.",
+  "references": [
+    "https://www.etsi.org/deliver/etsi_en/302300_302399/30230701/01.04.01_60/en_30230701v010401p.pdf",
+    "https://github.com/f4exb/sdrangel/blob/master/plugins/channelrx/demoddatv/leansdr/dvbs2.h",
+    "https://github.com/f4exb/sdrangel/blob/master/plugins/channelrx/demoddatv/leansdr/sdr.h"
+  ]
+}

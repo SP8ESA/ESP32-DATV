@@ -1,0 +1,38 @@
+{
+  "firmware_sha256": "afd8951210abe58b5b13c0b1802dc46d6b6c4b328c34550fa53383f4bf4e77ec",
+  "tests": [
+    {
+      "baud": 250000,
+      "ack": "OK QPSKT LO 2369971619 BAUD 250000.000 OUT 8000000 AMP 400 SPS 32 PERIOD 20 IF 0 TARGET 3500 MOD 32APSK REM 0 DIV 1 SREM 0 SDIV 1 PLPTS 4",
+      "tx_end": "TX END symbols=36145600 bytes_in=982848 underruns=146702 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffers_pairs": [
+        [
+          0,
+          2627
+        ],
+        [
+          1873,
+          2712
+        ]
+      ]
+    },
+    {
+      "baud": 125000,
+      "ack": "OK QPSKT LO 2369971619 BAUD 125000.000 OUT 1500000 AMP 400 SPS 12 PERIOD 106 IF 0 TARGET 2500 MOD 32APSK REM 1000000 DIV 1500000 SREM 0 SDIV 1 PLPTS 4",
+      "tx_end": "TX END symbols=6783060 bytes_in=492536 underruns=72720 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+      "buffers_pairs": [
+        [
+          0,
+          1980
+        ]
+      ]
+    }
+  ],
+  "video_decode_seconds": 10,
+  "ffmpeg_decode_errors": 0,
+  "notes": [
+    "Underrun totals include the empty-buffer startup and the intentional 0.5-second shutdown after USB stops.",
+    "The 8 MS/s loop averages its symbol deadlines; individual sample spacings can differ by a few CPU cycles during USB operations.",
+    "The 125 kS/s and narrower modes retain the previous C loop."
+  ]
+}

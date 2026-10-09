@@ -10,6 +10,8 @@
  * stream (3 bits each) and the recording covers 7 passes N N N M N N N (56 symbols):  /tmp/check_words -p8s8 8 /tmp/words_p8s8.txt
  * 16APSK (lutg_a16.S, command A16T, gen_lutg_a16.py --rec words): "A16T 2370.000 500000 16 300 5 0 0 0 0 10000 0 315" and
  *   /tmp/check_words -a16 16 /tmp/words_a16_16.txt 300 315      (the last two: amp and gamma x 100)
+ * 32APSK (tx_a32_c, narrowband C loop, command A32T): "A32T 2370.000 66000 22 300 5 0 0 0 0 10000 0 284 527" with LUTG_REC 2 and
+ *   /tmp/check_words -a32 22 /tmp/words_a32_22.txt 300 284 527      (the last three: amp, gamma1 and gamma2 x 100; one ring byte per symbol)
  * Prints the number of words compared and mismatches (S = the samples per symbol of the QPSKT command; it covers all four code copies
  * of the loop, the history and the table row pointers). Restore the production lutg.S afterwards. */
 #include <stdio.h>
@@ -28,12 +30,13 @@ static float rrc_pulse(float t, float b) {
 }
 #include "../firmware/main/qpsk_lut.h"
 int main(int argc, char **argv) {
-    int p8 = 0, p8s8 = 0, a16 = 0, a16s8 = 0;
+    int p8 = 0, p8s8 = 0, a16 = 0, a16s8 = 0, a32 = 0;
     if (argc > 1 && !strcmp(argv[1], "-p8")) { p8 = 1; ++argv; --argc; }
     if (argc > 1 && !strcmp(argv[1], "-p8s8")) { p8 = p8s8 = 1; ++argv; --argc; }
     if (argc > 1 && !strcmp(argv[1], "-a16")) { a16 = 1; ++argv; --argc; }
     if (argc > 1 && !strcmp(argv[1], "-a16s8")) { a16 = a16s8 = 1; ++argv; --argc; }
-    const unsigned gamma100 = a16 && argc > 4 ? (unsigned)atoi(argv[4]) : 315;
+    if (argc > 1 && !strcmp(argv[1], "-a32")) { a32 = 1; ++argv; --argc; }
+    const unsigned gamma100 = (a16 || a32) && argc > 4 ? (unsigned)atoi(argv[4]) : a32 ? 284 : 315, gamma2_100 = a32 && argc > 5 ? (unsigned)atoi(argv[5]) : 527;
     const unsigned nsym = p8s8 || a16s8 ? 64 : 12;
     const uint32_t S = atoi(argv[1]);
     const int amp = argc > 3 ? atoi(argv[3]) : 300;
@@ -55,20 +58,26 @@ int main(int argc, char **argv) {
             }
         }
     }
-    int32_t *T = malloc(a16 ? lutt16_bytes(S) : p8 ? lutt8_bytes(S) : lutt_bytes(S));
+    int32_t *T = malloc(a32 ? lutt32_bytes(S) : a16 ? lutt16_bytes(S) : p8 ? lutt8_bytes(S) : lutt_bytes(S));
     float *h = malloc(8 * S * 4);
-    if (a16) lut_build_a16(T, S, 0, 0.35f, (float)amp, 0, 0, 1.0f, 0.0f, h, gamma100);
+    if (a32) lut_build_a32(T, S, 0, 0.35f, (float)amp, 0, 0, 1.0f, 0.0f, h, gamma100, gamma2_100);
+    else if (a16) lut_build_a16(T, S, 0, 0.35f, (float)amp, 0, 0, 1.0f, 0.0f, h, gamma100);
     else if (p8) lut_build_p8(T, S, 0, 0.35f, (float)amp, 0, 0, 1.0f, 0.0f, h);
     else lut_build_t(T, S, 0, 0.35f, (float)amp, 0, 0, 1.0f, 0.0f, h);
     uint8_t ring[16384];
     uint32_t rng = 0x2545F491u;
     for (int i = 0; i < 16384; ++i) { rng ^= rng << 13; rng ^= rng >> 17; rng ^= rng << 5; ring[i] = (uint8_t)(rng >> 8); }
+    if (a32) {
+        static const uint8_t pattern[] = {32, 33, 34, 35, 0, 31, 17, 23, 8, 16, 24, 35};
+        memcpy(ring, pattern, sizeof(pattern));
+    }
     long bad = 0, tot = 0;
-    uint32_t C = 0;
+    uint64_t C = 0;
     for (unsigned n = 0; n < (p8s8 || a16s8 ? 56u : nsym - 1); ++n) {   /* fixed 8-SPS loops record seven complete passes */
         for (uint32_t j = 0; j < S; ++j) {
             uint32_t w = 0;
-            if (a16) for (uint32_t g = 0; g < 3; ++g) w += (uint32_t)T[(g * 256 + ((C >> (8 * g)) & 255)) * S + j];
+            if (a32) for (uint32_t g = 0; g < 6; ++g) w += (uint32_t)T[(g * LUTA32_POINTS + ((C >> (6 * g)) & 63)) * S + j];
+            else if (a16) for (uint32_t g = 0; g < 3; ++g) w += (uint32_t)T[(g * 256 + ((C >> (8 * g)) & 255)) * S + j];
             else if (p8) for (uint32_t g = 0; g < 4; ++g) w += (uint32_t)T[(g * S + j) * 64 + ((C >> (6 * g)) & 63)];
             else    for (uint32_t g = 0; g < 4; ++g) w += (uint32_t)T[(g * S + j) * 16 + ((C >> (4 * g)) & 15)];
             w ^= LUT_XOR;
@@ -76,7 +85,11 @@ int main(int argc, char **argv) {
             ++tot;
             if ((rec[n * S + j] & 0xFFFFF) != (w & 0xFFFFF)) { if (bad < 8) printf("MISMATCH symbol %u sample %u: got %05x expected %05x\n", n, j, rec[n * S + j] & 0xFFFFF, w & 0xFFFFF); ++bad; }
         }
-        if (a16) {
+        if (a32) {
+            uint32_t sym = ring[n & 8191] & 63u;
+            if (sym >= LUTA32_POINTS) sym &= 31u;
+            C = ((C << 6) | sym) & UINT64_C(0xFFFFFFFFF);
+        } else if (a16) {
             const uint32_t sym = (ring[(n >> 1) & 8191] >> (4 * (n & 1))) & 15;      /* 16APSK: a nibble per symbol (8 KB ring), the low nibble first */
             C = (C << 4) | sym;
         } else if (p8s8) {
@@ -91,5 +104,5 @@ int main(int argc, char **argv) {
         }
     }
     printf("S=%u: %ld words compared, %ld mismatches\n", S, tot, bad);
-    return bad != 0 || (a16s8 && tot != 56u * S);
+    return bad != 0 || (a16s8 && tot != 56u * S) || (a32 && tot != (nsym - 1u) * S);
 }

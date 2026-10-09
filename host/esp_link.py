@@ -14,6 +14,10 @@ BAND = (2300.0, 2450.0)          # MHz, the 13 cm amateur band; the firmware ref
 def find_port(port=None):
     if port:
         return port
+    # A tinySA can also occupy ttyACM0. Prefer the ESP's native USB identity.
+    native = sorted(glob.glob("/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_*-if00"))
+    if native:
+        return native[0]
     ports = sorted(glob.glob("/dev/ttyACM*"))
     if not ports:
         raise SystemExit("no /dev/ttyACM*: is the board plugged in?")

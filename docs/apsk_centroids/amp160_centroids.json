@@ -1,0 +1,520 @@
+{
+  "samples": 87040,
+  "scope_amplitude": 75,
+  "receiver_dc_i": -0.029251128864980658,
+  "receiver_dc_q": 0.027685997490687675,
+  "receiver_rotation_deg": 0.08340028979188951,
+  "payload_gain": 0.8759963366638919,
+  "centroid_error_after_common_gain_percent": 0.48755229759988244,
+  "mer_in_receiver_coordinates_db": 15.209027350435552,
+  "mer_after_common_gain_db": 17.15777098340299,
+  "predicted_gain_if_pl_uses_outer_ring": 0.8804517381949458,
+  "predicted_outer_radius_if_pl_uses_outer_ring": 1.0,
+  "predicted_inward_shift_percent": 11.954826180505417,
+  "rings": [
+    {
+      "expected_radius": 0.3605652686,
+      "measured_radius": 0.31905048173669626,
+      "radial_error_percent": -11.513806369786261,
+      "symbols": [
+        12,
+        13,
+        14,
+        15
+      ],
+      "centroid_radius_spread": 0.0029367108661003207,
+      "expected_ratio_to_inner": 1.0,
+      "measured_ratio_to_inner": 1.0
+    },
+    {
+      "expected_radius": 1.135780596,
+      "measured_radius": 0.9946063677953764,
+      "radial_error_percent": -12.429709461652372,
+      "symbols": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "centroid_radius_spread": 0.0028270345359255843,
+      "expected_ratio_to_inner": 3.149999999750392,
+      "measured_ratio_to_inner": 3.1173949726745693
+    }
+  ],
+  "centroids": [
+    {
+      "symbol": 0,
+      "count": 5190,
+      "ideal_i": 0.8031181614068016,
+      "ideal_q": 0.8031181614068015,
+      "measured_i": 0.676752729608221,
+      "measured_q": 0.7339473346178548,
+      "aligned_i": 0.7070311509905588,
+      "aligned_q": 0.7052329232449859,
+      "expected_radius": 1.1357805960496432,
+      "measured_radius": 0.9986223132394462,
+      "radial_error_percent": -12.076196125255246,
+      "phase_error_deg": -0.07295434800315648,
+      "radial_std": 0.08067197586804191,
+      "tangential_std": 0.09395525129330912,
+      "radial_mean_95ci": 0.0021948006822065246
+    },
+    {
+      "symbol": 1,
+      "count": 5522,
+      "ideal_i": 0.8031181614068016,
+      "ideal_q": -0.8031181614068015,
+      "measured_i": 0.6732391645539056,
+      "measured_q": -0.6743184836411928,
+      "aligned_i": 0.7014677050619592,
+      "aligned_q": -0.7030262887204873,
+      "expected_radius": 1.1357805960496432,
+      "measured_radius": 0.9931278386376015,
+      "radial_error_percent": -12.559940661643731,
+      "phase_error_deg": -0.06358178062027725,
+      "radial_std": 0.07936911402873242,
+      "tangential_std": 0.09617164640957086,
+      "radial_mean_95ci": 0.002093434623140533
+    },
+    {
+      "symbol": 2,
+      "count": 5512,
+      "ideal_i": -0.8031181614068015,
+      "ideal_q": 0.8031181614068016,
+      "measured_i": -0.735730527334301,
+      "measured_q": 0.7346250604741172,
+      "aligned_i": -0.7054496230638921,
+      "aligned_q": 0.7079666719221144,
+      "expected_radius": 1.1357805960496432,
+      "measured_radius": 0.9994378316000762,
+      "radial_error_percent": -12.004461926862609,
+      "phase_error_deg": -0.10203372103688323,
+      "radial_std": 0.0793104333904614,
+      "tangential_std": 0.09604120436091308,
+      "radial_mean_95ci": 0.0020937835817097365
+    },
+    {
+      "symbol": 3,
+      "count": 5885,
+      "ideal_i": -0.8031181614068015,
+      "ideal_q": -0.8031181614068016,
+      "measured_i": -0.735131124327386,
+      "measured_q": -0.6740809968847352,
+      "aligned_i": -0.7069007461045955,
+      "aligned_q": -0.7007387655506768,
+      "expected_radius": 1.1357805960496432,
+      "measured_radius": 0.995360980945466,
+      "radial_error_percent": -12.364109087662388,
+      "phase_error_deg": -0.25081224355598186,
+      "radial_std": 0.08122620738455646,
+      "tangential_std": 0.09568632276472472,
+      "radial_mean_95ci": 0.0020752910512962545
+    },
+    {
+      "symbol": 4,
+      "count": 5064,
+      "ideal_i": 1.097079810722342,
+      "ideal_q": 0.2939616493155405,
+      "measured_i": 0.9343127962085309,
+      "measured_q": 0.2843443917851501,
+      "aligned_i": 0.9639364985789104,
+      "aligned_q": 0.25525554993440175,
+      "expected_radius": 1.1357805960496432,
+      "measured_radius": 0.9971604530189129,
+      "radial_error_percent": -12.205212869512538,
+      "phase_error_deg": -0.16819381840500958,
+      "radial_std": 0.07882741326345151,
+      "tangential_std": 0.09440019700773601,
+      "radial_mean_95ci": 0.0021711333487701113
+    },
+    {
+      "symbol": 5,
+      "count": 4789,
+      "ideal_i": 1.097079810722342,
+      "ideal_q": -0.2939616493155405,
+      "measured_i": 0.9302554465093619,
+      "measured_q": -0.2273084151179787,
+      "aligned_i": 0.9591343866758806,
+      "aligned_q": -0.25639080900866995,
+      "expected_radius": 1.1357805960496432,
+      "measured_radius": 0.9928116733037731,
+      "radial_error_percent": -12.587738971246608,
+      "phase_error_deg": 0.03391896086300849,
+      "radial_std": 0.08072960056288071,
+      "tangential_std": 0.0944764070166171,
+      "radial_mean_95ci": 0.0022864749961952016
+    },
+    {
+      "symbol": 6,
+      "count": 5184,
+      "ideal_i": -1.097079810722342,
+      "ideal_q": 0.2939616493155408,
+      "measured_i": -0.9861291152263375,
+      "measured_q": 0.27987397119341567,
+      "aligned_i": -0.956509885525743,
+      "aligned_q": 0.2535805468776791,
+      "expected_radius": 1.1357805960496432,
+      "measured_radius": 0.9895525528557101,
+      "radial_error_percent": -12.874979554033539,
+      "phase_error_deg": 0.15187230436826876,
+      "radial_std": 0.07746482724105994,
+      "tangential_std": 0.09614010559727501,
+      "radial_mean_95ci": 0.0021087647415621875
+    },
+    {
+      "symbol": 7,
+      "count": 5220,
+      "ideal_i": -1.097079810722342,
+      "ideal_q": -0.2939616493155408,
+      "measured_i": -0.9901174968071521,
+      "measured_q": -0.233205619412516,
+      "aligned_i": -0.9612451062228818,
+      "aligned_q": -0.2594926946472848,
+      "expected_radius": 1.1357805960496432,
+      "measured_radius": 0.9956548663129953,
+      "radial_error_percent": -12.337547551232142,
+      "phase_error_deg": 0.10715930549782332,
+      "radial_std": 0.07964168949236797,
+      "tangential_std": 0.0937835503004648,
+      "radial_mean_95ci": 0.0021605348912837113
+    },
+    {
+      "symbol": 8,
+      "count": 5131,
+      "ideal_i": 0.2939616493155405,
+      "ideal_q": 1.097079810722342,
+      "measured_i": 0.2285779250308582,
+      "measured_q": 0.9899135970895862,
+      "aligned_i": 0.25922940804055605,
+      "aligned_q": 0.9618512818880185,
+      "expected_radius": 1.1357805960496432,
+      "measured_radius": 0.996171558750139,
+      "radial_error_percent": -12.291994990827337,
+      "phase_error_deg": -0.0834528263907149,
+      "radial_std": 0.0795683362559536,
+      "tangential_std": 0.09362090791309118,
+      "radial_mean_95ci": 0.0021771850387181874
+    },
+    {
+      "symbol": 9,
+      "count": 5556,
+      "ideal_i": 0.2939616493155405,
+      "ideal_q": -1.097079810722342,
+      "measured_i": 0.23196064314854814,
+      "measured_q": -0.9300095992320614,
+      "aligned_i": 0.2598174648220055,
+      "aligned_q": -0.9580748043832779,
+      "expected_radius": 1.1357805960496432,
+      "measured_radius": 0.9926794275195745,
+      "radial_error_percent": -12.599765423932629,
+      "phase_error_deg": 0.17294702668693174,
+      "radial_std": 0.08135462149666906,
+      "tangential_std": 0.0931414753521887,
+      "radial_mean_95ci": 0.0021392285286259056
+    },
+    {
+      "symbol": 10,
+      "count": 5303,
+      "ideal_i": -0.29396164931554064,
+      "ideal_q": 1.097079810722342,
+      "measured_i": -0.29032497328556167,
+      "measured_q": 0.9843673392419385,
+      "aligned_i": -0.2596810137339849,
+      "aligned_q": 0.9570603497176159,
+      "expected_radius": 1.1357805960496432,
+      "measured_radius": 0.9916646317659591,
+      "radial_error_percent": -12.689149245508546,
+      "phase_error_deg": 0.1806789306143842,
+      "radial_std": 0.0794423846557011,
+      "tangential_std": 0.09605651476240228,
+      "radial_mean_95ci": 0.0021381960842912196
+    },
+    {
+      "symbol": 11,
+      "count": 5837,
+      "ideal_i": -0.29396164931554064,
+      "ideal_q": -1.097079810722342,
+      "measured_i": -0.28627605505111076,
+      "measured_q": -0.9315070527097254,
+      "aligned_i": -0.2584208640648997,
+      "aligned_q": -0.9588179061999774,
+      "expected_radius": 1.1357805960496432,
+      "measured_radius": 0.9930322855948632,
+      "radial_error_percent": -12.5683936639987,
+      "phase_error_deg": -0.0839533163733374,
+      "radial_std": 0.08062924645897024,
+      "tangential_std": 0.09119581105313802,
+      "radial_mean_95ci": 0.002068491905372798
+    },
+    {
+      "symbol": 12,
+      "count": 5706,
+      "ideal_i": 0.25495814647834975,
+      "ideal_q": 0.2549581464783497,
+      "measured_i": 0.19741558593293612,
+      "measured_q": 0.25794835845309033,
+      "aligned_i": 0.22700164666450826,
+      "aligned_q": 0.22993217888077722,
+      "expected_radius": 0.36056526858718835,
+      "measured_radius": 0.32310765152385357,
+      "radial_error_percent": -10.390424495793294,
+      "phase_error_deg": 0.3674598294892486,
+      "radial_std": 0.07722566317031909,
+      "tangential_std": 0.07930771746865756,
+      "radial_mean_95ci": 0.002003788289403475
+    },
+    {
+      "symbol": 13,
+      "count": 5859,
+      "ideal_i": 0.25495814647834975,
+      "ideal_q": -0.2549581464783497,
+      "measured_i": 0.19434374466632534,
+      "measured_q": -0.1966808897991694,
+      "aligned_i": 0.22326804616315477,
+      "aligned_q": -0.22469211633723948,
+      "expected_radius": 0.36056526858718835,
+      "measured_radius": 0.31675726918512886,
+      "radial_error_percent": -12.150255112865416,
+      "phase_error_deg": -0.18214328566283822,
+      "radial_std": 0.07740261224260105,
+      "tangential_std": 0.07889331237496651,
+      "radial_mean_95ci": 0.0019819830688230624
+    },
+    {
+      "symbol": 14,
+      "count": 5505,
+      "ideal_i": -0.2549581464783497,
+      "ideal_q": 0.25495814647834975,
+      "measured_i": -0.25734302149561006,
+      "measured_q": 0.24609748713290946,
+      "aligned_i": -0.22777372922958616,
+      "aligned_q": 0.2187432709008533,
+      "expected_radius": 0.36056526858718835,
+      "measured_radius": 0.31579976296944384,
+      "radial_error_percent": -12.433274578979514,
+      "phase_error_deg": 1.1586045398618459,
+      "radial_std": 0.0775653952954171,
+      "tangential_std": 0.08028210796394375,
+      "radial_mean_95ci": 0.002049016331050538
+    },
+    {
+      "symbol": 15,
+      "count": 5777,
+      "ideal_i": -0.2549581464783497,
+      "ideal_q": -0.25495814647834975,
+      "measured_i": -0.25382378397091915,
+      "measured_q": -0.20103052333968036,
+      "aligned_i": -0.22490533905195073,
+      "aligned_q": -0.22838938851883217,
+      "expected_radius": 0.36056526858718835,
+      "measured_radius": 0.32053724326835875,
+      "radial_error_percent": -11.10409025324569,
+      "phase_error_deg": 0.44037000025850703,
+      "radial_std": 0.07895394841877595,
+      "tangential_std": 0.07833572362271375,
+      "radial_mean_95ci": 0.002036004535708264
+    }
+  ],
+  "limitations": [
+    "Samples are the quantized constellation pixels (1/75 unit per pixel), not raw ADC samples.",
+    "The GUI exports one payload symbol per 90-symbol slot; repeated measurements reduce sampling uncertainty.",
+    "Confidence intervals describe the selected samples and do not bound systematic receiver error.",
+    "A common gain error and a change of ring ratios are reported separately."
+  ],
+  "modulation": "16APSK",
+  "fec": "2/3",
+  "tx_amp": 160,
+  "capture_seconds": 8.188754115999927,
+  "first": 534528,
+  "count": 87040,
+  "input_file": "/home/sp8esa/Pulpit/esp32/nagrania/apsk_centroids_20261009/measurement/points.s16",
+  "receiver_reports": [
+    {
+      "DATVDemodReport": {
+        "audioActive": 1,
+        "audioDecodeOK": 0,
+        "channelPowerDB": -20.950803756713867,
+        "cnr": 6.713414192199707,
+        "mer": 16.441274642944336,
+        "modcodCodeRate": 1,
+        "modcodModulation": 3,
+        "setByModcod": 1,
+        "symbolRate": 1000000,
+        "udpRunning": 0,
+        "videoActive": 1,
+        "videoDecodeOK": 1
+      },
+      "channelType": "DATVDemod",
+      "direction": 0
+    },
+    {
+      "DATVDemodReport": {
+        "audioActive": 1,
+        "audioDecodeOK": 0,
+        "channelPowerDB": -19.958314895629883,
+        "cnr": 6.8016886711120605,
+        "mer": 17.571943283081055,
+        "modcodCodeRate": 1,
+        "modcodModulation": 3,
+        "setByModcod": 1,
+        "symbolRate": 1000000,
+        "udpRunning": 0,
+        "videoActive": 1,
+        "videoDecodeOK": 1
+      },
+      "channelType": "DATVDemod",
+      "direction": 0
+    },
+    {
+      "DATVDemodReport": {
+        "audioActive": 1,
+        "audioDecodeOK": 0,
+        "channelPowerDB": -20.059654235839844,
+        "cnr": 7.02511739730835,
+        "mer": 17.3262882232666,
+        "modcodCodeRate": 1,
+        "modcodModulation": 3,
+        "setByModcod": 1,
+        "symbolRate": 1000000,
+        "udpRunning": 0,
+        "videoActive": 1,
+        "videoDecodeOK": 1
+      },
+      "channelType": "DATVDemod",
+      "direction": 0
+    },
+    {
+      "DATVDemodReport": {
+        "audioActive": 1,
+        "audioDecodeOK": 0,
+        "channelPowerDB": -20.374788284301758,
+        "cnr": 6.875760555267334,
+        "mer": 16.399398803710938,
+        "modcodCodeRate": 1,
+        "modcodModulation": 3,
+        "setByModcod": 1,
+        "symbolRate": 1000000,
+        "udpRunning": 0,
+        "videoActive": 1,
+        "videoDecodeOK": 1
+      },
+      "channelType": "DATVDemod",
+      "direction": 0
+    }
+  ],
+  "receiver_settings": {
+    "deviceHwType": "HackRF",
+    "direction": 0,
+    "hackRFInputSettings": {
+      "LOppmTenths": 0,
+      "bandwidth": 5000000,
+      "biasT": 0,
+      "centerFrequency": 2368600000,
+      "dcBlock": 0,
+      "devSampleRate": 11000000,
+      "fcPos": 2,
+      "iqCorrection": 0,
+      "iqOrder": 1,
+      "lnaExt": 0,
+      "lnaGain": 17,
+      "log2Decim": 1,
+      "reverseAPIAddress": "127.0.0.1",
+      "reverseAPIDeviceIndex": 0,
+      "reverseAPIPort": 8888,
+      "transverterDeltaFrequency": 0,
+      "transverterMode": 0,
+      "useReverseAPI": 0,
+      "vgaGain": 23
+    }
+  },
+  "receiver_reference_crosses": [
+    {
+      "i": -1.0933333333333333,
+      "q": -0.29333333333333333,
+      "count": 608
+    },
+    {
+      "i": -1.0933333333333333,
+      "q": 0.29333333333333333,
+      "count": 608
+    },
+    {
+      "i": -0.8,
+      "q": -0.8,
+      "count": 608
+    },
+    {
+      "i": -0.8,
+      "q": 0.8,
+      "count": 608
+    },
+    {
+      "i": -0.29333333333333333,
+      "q": -1.0933333333333333,
+      "count": 608
+    },
+    {
+      "i": -0.29333333333333333,
+      "q": 1.0933333333333333,
+      "count": 608
+    },
+    {
+      "i": -0.25333333333333335,
+      "q": -0.25333333333333335,
+      "count": 608
+    },
+    {
+      "i": -0.25333333333333335,
+      "q": 0.25333333333333335,
+      "count": 608
+    },
+    {
+      "i": 0.25333333333333335,
+      "q": -0.25333333333333335,
+      "count": 608
+    },
+    {
+      "i": 0.25333333333333335,
+      "q": 0.25333333333333335,
+      "count": 608
+    },
+    {
+      "i": 0.29333333333333333,
+      "q": -1.0933333333333333,
+      "count": 608
+    },
+    {
+      "i": 0.29333333333333333,
+      "q": 1.0933333333333333,
+      "count": 608
+    },
+    {
+      "i": 0.8,
+      "q": -0.8,
+      "count": 608
+    },
+    {
+      "i": 0.8,
+      "q": 0.8,
+      "count": 608
+    },
+    {
+      "i": 1.0933333333333333,
+      "q": -0.29333333333333333,
+      "count": 608
+    },
+    {
+      "i": 1.0933333333333333,
+      "q": 0.29333333333333333,
+      "count": 608
+    }
+  ]
+}

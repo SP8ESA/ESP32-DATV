@@ -1,0 +1,26 @@
+[
+  {
+    "baud": 33000,
+    "sps": 48,
+    "result": "S=48: 528 words compared, 0 mismatches\n",
+    "returncode": 0
+  },
+  {
+    "baud": 66000,
+    "sps": 24,
+    "result": "S=24: 264 words compared, 0 mismatches\n",
+    "returncode": 0
+  },
+  {
+    "baud": 125000,
+    "sps": 12,
+    "result": "S=12: 132 words compared, 0 mismatches\n",
+    "returncode": 0
+  },
+  {
+    "baud": 250000,
+    "sps": 6,
+    "result": "S=6: 66 words compared, 0 mismatches\n",
+    "returncode": 0
+  }
+]

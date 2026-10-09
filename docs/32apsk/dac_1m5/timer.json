@@ -1,0 +1,5 @@
+{
+  "seconds": 1.0303020020000986,
+  "summary": "TX END symbols=1511424 bytes_in=185344 underruns=66560 late_slots=0 (lag bits 0x0) buffer=0 pairs (host silent or time over)",
+  "max_blocks_24h": 10546875
+}

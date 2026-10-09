@@ -23,3 +23,6 @@ CONFIG_HEAP_PLACE_FUNCTION_INTO_FLASH=y
 # Wi-Fi only brings up the PHY (no frames are ever received): the smallest buffer pools keep about 14 KB of heap for the symbol tables and the ring
 CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=2
 CONFIG_ESP_WIFI_MGMT_SBUF_NUM=6
+
+# Lock APIs are used with the cache enabled; keep IRAM for DAC loops.
+CONFIG_LIBC_LOCKS_PLACE_IN_IRAM=n

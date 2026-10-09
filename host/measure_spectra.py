@@ -8,6 +8,7 @@ No firmware is flashed and no receiver settings are changed.
 """
 import argparse
 import datetime
+import hashlib
 import json
 import math
 import os
@@ -29,7 +30,7 @@ REPO = Path(__file__).resolve().parents[1]
 ESP_PORT = "/dev/serial/by-id/usb-Espressif_USB_JTAG_serial_debug_unit_10:00:3B:DE:F9:64-if00"
 SA_PORT = "/dev/serial/by-id/usb-tinysa.org_tinySA4_400-if00"
 RATES = (1000000, 500000, 333000, 250000, 125000, 66000, 33000)
-FEC = {"qpsk": "1/2", "8psk": "3/5", "16apsk": "2/3"}
+FEC = {"qpsk": "1/2", "8psk": "3/5", "16apsk": "2/3", "32apsk": "3/4"}
 CENTRE = 2370e6
 ROW = re.compile(r"^(\d{9,10}) (-?\d+\.\d+e[+-]\d+) ")
 
@@ -69,6 +70,9 @@ class TinySA:
     def scan(self, f0, f1, points=450):
         for _ in range(3):
             answer = self.cmd(f"scan {int(f0)} {int(f1)} {points} 3")
+            # tinySA's formatter can round a mantissa to 10 and emit ':'
+            # ('0' + 10), e.g. -:.000000e+00 for exactly -10 dBm.
+            answer = re.sub(r"([+-]?):(\.\d+e[+-]\d+)", r"\g<1>10\2", answer)
             rows = [m.groups() for m in map(ROW.match, answer.splitlines()) if m]
             if len(rows) == points:
                 return np.array([int(f) for f, y in rows], float), np.array([float(y) for f, y in rows])
@@ -226,7 +230,7 @@ def plot_and_export(output, mod, baud, values, wide, zoom, passes):
     axes[1].set_xlabel(f"Offset from signal centre ({unit})")
     span = (zoom[0][-1] - zoom[0][0]) / (1000 if use_khz else 1e6)
     axes[1].set_title(f"{mod.upper()}, {rate_label} — {span:g} {unit} / RBW {zoom[2]['rbw_khz']:g} kHz", loc="left", fontsize=12)
-    fig.text(.5, .025, f"tinySA Ultra+ · 2370 MHz · AMP 300 · {passes} sweeps averaged in power · 3-bin smoothing · "
+    fig.text(.5, .025, f"tinySA Ultra+ · 2370 MHz · AMP {values.get('AMP', '300')} · {passes} sweeps averaged in power · 3-bin smoothing · "
              f"DAC {dac / 1e6:g} MS/s / {values['SPS']} SPS · {now()[:10]}", ha="center", fontsize=9, color="#444444")
     fig.tight_layout(rect=(0, .05, 1, 1), w_pad=2.2)
     fig.savefig(output / png, facecolor=fig.get_facecolor())
@@ -242,9 +246,25 @@ def main():
     parser.add_argument("--passes", type=int, default=3)
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--sa-port", default=SA_PORT)
+    parser.add_argument("--modulations", nargs="+", choices=tuple(FEC), default=["qpsk", "8psk", "16apsk"])
+    parser.add_argument("--rates", nargs="+", type=int, choices=RATES)
+    parser.add_argument("--amp", type=int, default=300)
+    parser.add_argument("--source", choices=("null", "video"), default="null")
+    parser.add_argument("--pilots", action="store_true")
+    parser.add_argument("--apsk-pl", choices=("outer", "unit"), default="unit")
     args = parser.parse_args()
     if not 1 <= args.passes <= 30:
         parser.error("--passes must be 1..30")
+    if not 1 <= args.amp <= 480:
+        parser.error("--amp must be 1..480")
+    if "32apsk" in args.modulations and args.rates and any(rate > 250000 for rate in args.rates):
+        parser.error("32APSK supports up to 250000 symbols/s")
+    jobs = [(mod, baud) for mod in dict.fromkeys(args.modulations)
+            for baud in dict.fromkeys(args.rates or RATES) if mod != "32apsk" or baud <= 250000]
+    settings = dict(modulations=list(dict.fromkeys(args.modulations)),
+                    symbol_rates_baud=list(dict.fromkeys(args.rates or RATES)),
+                    amp=args.amp, source="live video" if args.source == "video" else "scrambled null TS packets",
+                    pilots=args.pilots, apsk_pl=args.apsk_pl)
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=args.resume)
     previous = json.loads(args.state.read_text())
@@ -255,13 +275,20 @@ def main():
         metadata = json.loads(meta_path.read_text())
         if metadata["firmware_commit"] != commit or metadata["passes"] != args.passes:
             raise RuntimeError("Cannot resume with different firmware or averaging")
+        if any(metadata.get(key, value) != value for key, value in settings.items()):
+            raise RuntimeError("Cannot resume with different modulation, source or transmitter settings")
     else:
         metadata = dict(started_at=now(), firmware_commit=commit, frequency_mhz=2370,
-                        symbol_rates_baud=list(RATES), modulations=list(FEC), source="scrambled null TS packets",
-                        amp=300, ppm=12, analyzer_internal_attenuation_db=10,
+                        **settings, ppm=12, analyzer_internal_attenuation_db=10,
                         passes=args.passes, smoothing_bins=3, normalization="each panel relative to its smoothed central signal top",
                         bandplan="https://wiki.batc.org.uk/QO-100_WB_Bandplan", rates=[])
     metadata["worker_pid"] = os.getpid()
+    image = REPO / "firmware/build/esp32_datv.bin"
+    if image.exists():
+        digest = hashlib.sha256(image.read_bytes()).hexdigest()
+        if args.resume and metadata.get("firmware_sha256", digest) != digest:
+            raise RuntimeError("Cannot resume with a different firmware image")
+        metadata["firmware_sha256"] = digest
     sa = TinySA(args.sa_port)
     tx, stopped = None, False
     try:
@@ -274,19 +301,26 @@ def main():
         stop_previous(previous)
         stopped = True
         finished = {(r["modulation"], r["requested_baud"]) for r in metadata["rates"]}
-        for mod, fec in FEC.items():
-            for baud in RATES:
+        for mod in dict.fromkeys(args.modulations):
+            fec = FEC[mod]
+            for _, baud in (job for job in jobs if job[0] == mod):
                 if (mod, baud) in finished:
                     continue
                 stem = f"{mod}_{'1MBd' if baud == 1000000 else str(baud // 1000) + 'kBd'}"
-                log(f"{len(metadata['rates']) + 1}/{len(FEC) * len(RATES)}: {mod.upper()} {baud} Bd")
+                log(f"{len(metadata['rates']) + 1}/{len(jobs)}: {mod.upper()} {baud} Bd")
                 path = output / f"tx_{stem}.log"
                 command = ["/usr/bin/python3", "-u", "-B", "host/tx_dvbs.py", "--freq", "2370.000", "--baud", str(baud),
-                           "--mod", mod, "--fec", fec, "--frame", "normal", "--null", "--amp", "300", "--ppm", "12", "--port", ESP_PORT]
+                           "--mod", mod, "--fec", fec, "--frame", "normal", "--amp", str(args.amp), "--ppm", "12", "--port", ESP_PORT]
+                if args.source == "null":
+                    command.append("--null")
                 if mod != "qpsk":
                     command.append("--dvbs2")
+                    if args.pilots:
+                        command.append("--pilots")
+                if mod == "32apsk":
+                    command += ["--apsk-pl", args.apsk_pl]
                 tx, ack, values = start_tx(command, path)
-                if values["MOD"] != mod.upper() or float(values["BAUD"]) != baud or values["AMP"] != "300":
+                if values["MOD"] != mod.upper() or float(values["BAUD"]) != baud or values["AMP"] != str(args.amp):
                     raise RuntimeError("Unexpected TX mode: " + ack)
                 log(ack)
                 rbw = 10 if baud >= 333000 else 3 if baud >= 125000 else 1
@@ -300,7 +334,8 @@ def main():
                     raise RuntimeError("TX did not finish cleanly: " + text[-1500:])
                 result = plot_and_export(output, mod, baud, values, wide, zoom, args.passes)
                 result.update(modulation=mod, standard="DVB-S" if mod == "qpsk" else "DVB-S2", fec=fec, frame=None if mod == "qpsk" else "normal",
-                              requested_baud=baud, actual_baud=float(values["BAUD"]), dac_hz=float(values["OUT"]), sps=int(values["SPS"]),
+                              pilots=args.pilots if mod != "qpsk" else False, apsk_pl=args.apsk_pl if mod == "32apsk" else None,
+                              amp=args.amp, requested_baud=baud, actual_baud=float(values["BAUD"]), dac_hz=float(values["OUT"]), sps=int(values["SPS"]),
                               period=int(values["PERIOD"]), command=command, acknowledgement=ack, tx_summary=summary,
                               buffer_reports=[list(map(int, row)) for row in re.findall(r"ESP buffer (\d+)\.\.(\d+) pairs", text)],
                               wide=wide[2], zoom=zoom[2])
