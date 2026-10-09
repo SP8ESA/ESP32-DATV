@@ -13,6 +13,7 @@
  * Commands (text, one per line, 115200 is irrelevant: USB CDC):
  *   INFO
  *   HEAP
+ *   PA 0|1   arm GPIO3 for the next transmission; PA queries armed state / pin level
  *   QPSKT f_MHz baud sps [amp [seconds [ifm [target [dcI dcQ [g phi]]]]]]   see qpsk_lut.h and README.md
  *   PSK8T ...same arguments   8PSK from the generic loop (3 bit symbols, 16..64 samples per symbol at 8 MS/s)
  *
@@ -26,6 +27,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "driver/gpio.h"
 #include "driver/usb_serial_jtag.h"
 #include "esp_attr.h"
 #include "esp_cpu.h"
@@ -61,6 +63,25 @@ extern void phy_set_freq(unsigned, int);
 extern void force_rx_gain(unsigned, unsigned, unsigned);
 extern void **g_phyFuns;
 extern void txcal_work_mode(void);
+
+/* External amplifier enable: never asserted merely by arming a transmission. */
+#define PA_ENABLE_GPIO GPIO_NUM_3
+static bool pa_requested;
+static void pa_set(bool on) { gpio_set_level(PA_ENABLE_GPIO, on ? 1 : 0); }
+
+static void pa_init(void) {
+    /* Set the output latch before switching the pad to an output. */
+    ESP_ERROR_CHECK(gpio_set_level(PA_ENABLE_GPIO, 0));
+    const gpio_config_t config = {
+        .pin_bit_mask = UINT64_C(1) << PA_ENABLE_GPIO,
+        .mode = GPIO_MODE_INPUT_OUTPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_ENABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    ESP_ERROR_CHECK(gpio_config(&config));
+    pa_set(false);
+}
 
 static inline uint32_t rd(uint32_t a) { return *(volatile uint32_t *)a; }
 static inline void wr(uint32_t a, uint32_t v) { *(volatile uint32_t *)a = v; }
@@ -792,7 +813,7 @@ out:
 }
 
 static void tx_qpsk_lut(uint32_t fkhz, uint32_t baud_req, uint32_t sps, int32_t amp, uint32_t secs, int32_t ifm, int32_t target, int32_t dc4i, int32_t dc4q,
-                        int32_t gq, int32_t phim, bool psk8, bool a16, uint32_t gamma100, bool a32, uint32_t gamma2_100) {
+                        int32_t gq, int32_t phim, bool psk8, bool a16, uint32_t gamma100, bool a32, uint32_t gamma2_100, bool pa_enable) {
     if (a16 && baud_req > 500000u && !(baud_req == 1000000u && sps == 8u)) { say("ERR A16T rates above 500000 Bd require 1000000 Bd and 8 SPS\r\n"); return; }
     if (a32 && baud_req > LUTA32_MAX_BAUD) { say("ERR A32T maximum 250000 Bd\r\n"); return; }
     const uint32_t period = (CPU_HZ + baud_req * sps / 2) / (baud_req * sps);
@@ -866,11 +887,13 @@ static void tx_qpsk_lut(uint32_t fkhz, uint32_t baud_req, uint32_t sps, int32_t 
 #endif
     if (!tune(fkhz)) { free(T); say("ERR TUNE\r\n"); return; }
     const uint32_t owner0 = rd(SRAM_OWNER);
+    pa_set(pa_enable);
+    if (pa_enable) esp_rom_delay_us(5000);    /* amplifier settles before RF starts */
     phy_txforce(1);
     esp_rom_delay_us(3000);
     DAC_BUF[0] = 0;
     usb_drain_rx();
-    say("OK QPSKT LO %.0f BAUD %.3f OUT %.0f AMP %ld SPS %lu PERIOD %lu IF %.0f TARGET %ld MOD %s REM %lu DIV %lu SREM %lu SDIV %lu PLPTS %u\r\n", lo_hz, baud, fso, (long)amp, (unsigned long)sps, (unsigned long)(p8c || a16c || a32c ? clock.period : period), ifh, (long)target, a32 ? "32APSK" : a16 ? "16APSK" : psk8 ? "8PSK" : "QPSK", (unsigned long)(p8c || a16c || a32c ? clock.remainder : 0), (unsigned long)(p8c || a16c || a32c ? clock.divisor : 1), (unsigned long)(symbol_average ? symbol_clock.remainder : 0), (unsigned long)(symbol_average ? symbol_clock.divisor : 1), a32 ? 4u : 0u);
+    say("OK QPSKT LO %.0f BAUD %.3f OUT %.0f AMP %ld SPS %lu PERIOD %lu IF %.0f TARGET %ld MOD %s REM %lu DIV %lu SREM %lu SDIV %lu PLPTS %u PA %u\r\n", lo_hz, baud, fso, (long)amp, (unsigned long)sps, (unsigned long)(p8c || a16c || a32c ? clock.period : period), ifh, (long)target, a32 ? "32APSK" : a16 ? "16APSK" : psk8 ? "8PSK" : "QPSK", (unsigned long)(p8c || a16c || a32c ? clock.remainder : 0), (unsigned long)(p8c || a16c || a32c ? clock.divisor : 1), (unsigned long)(symbol_average ? symbol_clock.remainder : 0), (unsigned long)(symbol_average ? symbol_clock.divisor : 1), a32 ? 4u : 0u, (unsigned)gpio_get_level(PA_ENABLE_GPIO));
     lut_io_t io = {0};
 #ifdef LUTG_REC
     esp_rom_delay_us(150000);                                        /* time for the host to put bytes into the USB FIFO (exercises the read slots) */
@@ -917,6 +940,7 @@ static void tx_qpsk_lut(uint32_t fkhz, uint32_t baud_req, uint32_t sps, int32_t 
     wr(SRAM_OWNER, owner0);
     taskEXIT_CRITICAL(&stream_mux);
     phy_txforce(0);
+    pa_set(false);
     tx_leave();
     free(T);
     vTaskDelay(pdMS_TO_TICKS(30));
@@ -997,13 +1021,23 @@ static void tx_qpsk_lut(uint32_t fkhz, uint32_t baud_req, uint32_t sps, int32_t 
 
 static void handle(char *line) {
     if (!strcmp(line, "INFO")) {
-        say("ESP32DATV 1\r\n");
+        say("ESP32DATV 1 PA_GPIO %u\r\n", (unsigned)PA_ENABLE_GPIO);
+    } else if (!strcmp(line, "PA")) {
+        say("PA GPIO %u ARMED %u LEVEL %u\r\n", (unsigned)PA_ENABLE_GPIO,
+            (unsigned)pa_requested, (unsigned)gpio_get_level(PA_ENABLE_GPIO));
+    } else if (!strcmp(line, "PA 0") || !strcmp(line, "PA 1")) {
+        pa_requested = line[3] == '1';
+        pa_set(false);
+        say("OK PA %u GPIO %u\r\n", (unsigned)pa_requested, (unsigned)PA_ENABLE_GPIO);
     } else if (!strcmp(line, "HEAP")) {
         say("HEAP free %u largest %u\r\n", (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT), (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
     } else if (!strncmp(line, "QPSKT ", 6) || !strncmp(line, "PSK8T ", 6) || !strncmp(line, "A16T ", 5) || !strncmp(line, "A32T ", 5)) {
         const bool a32 = line[0] == 'A' && line[1] == '3';                 /* A32T: the same arguments plus gamma1 and gamma2 x 100 (R2 / R1 and R3 / R1 of the rings), one byte per symbol */
         const bool a16 = line[0] == 'A' && !a32;                                   /* A16T: the same arguments plus gamma x 100 (R2 / R1 of the rings), 4 bit symbols (nibbles in the ring) */
         const bool psk8 = line[0] == 'P';                                  /* PSK8T: the same arguments, 3 bit symbols (nibbles in the ring) */
+        const bool pa_enable = pa_requested;
+        pa_requested = false;                                           /* one shot, including rejected TX requests */
+        pa_set(false);
         char fs_[32];
         uint32_t fk = 0;
         long baud = 0, sps = 4, amp = 300, secs = 1800, ifm = 0, tgt = 0, dc4i = 0, dc4q = 0, gq = 10000, phim = 0, gam = a32 ? 284 : 315, gam2 = 527;
@@ -1014,13 +1048,16 @@ static void handle(char *line) {
             say("ERR QPSKT|PSK8T|A16T|A32T f_MHz baud sps(4|8|16, or 16..232 when baud * sps = 8 or 6.67 MHz; PSK8T: 16..64 at 8 MHz) [amp 1..480 [seconds [if in multiples of baud, +-6 [target 0 = PRBS in the ESP, >0 = stream from USB [dcI dcQ in 1/16 code [g in 1e-4 [phase in 1e-3 deg [gamma x 100: 16APSK ring ratio 200..400, 32APSK R2 / R1 [gamma2 x 100: 32APSK R3 / R1 200..700]]]]]]]]]]\r\n");
             return;
         }
-        tx_qpsk_lut(fk, (uint32_t)baud, (uint32_t)sps, (int32_t)amp, (uint32_t)secs, (int32_t)ifm, (int32_t)tgt, (int32_t)dc4i, (int32_t)dc4q, (int32_t)gq, (int32_t)phim, psk8, a16, (uint32_t)gam, a32, (uint32_t)gam2);
+        tx_qpsk_lut(fk, (uint32_t)baud, (uint32_t)sps, (int32_t)amp, (uint32_t)secs, (int32_t)ifm, (int32_t)tgt, (int32_t)dc4i, (int32_t)dc4q, (int32_t)gq, (int32_t)phim, psk8, a16, (uint32_t)gam, a32, (uint32_t)gam2, pa_enable);
     } else {
-        say("ERR ? (commands: INFO, HEAP, QPSKT, PSK8T, A16T, A32T)\r\n");
+        pa_requested = false;
+        pa_set(false);
+        say("ERR ? (commands: INFO, HEAP, PA, QPSKT, PSK8T, A16T, A32T)\r\n");
     }
 }
 
 void app_main(void) {
+    pa_init();
     esp_err_t e = nvs_flash_init();
     if (e == ESP_ERR_NVS_NO_FREE_PAGES || e == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());

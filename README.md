@@ -51,6 +51,27 @@ Replace `/dev/ttyACM0` with your board's port if necessary.
 
 ## Usage
 
+For the desktop GUI, install its dependencies and run:
+
+```sh
+python3 -m pip install -r host/requirements-gui.txt
+./uruchom_nadajnik.sh
+```
+
+<p align="center"><a href="docs/tx_gui.png"><img src="docs/tx_gui.png" alt="ESP32-DATV transmitter GUI with QO-100 channels, source selection and PA enable" width="1000"></a></p>
+
+The single-panel GUI selects video, TS or a V4L2 camera and controls TX, Start/Stop
+and profiles. Click a [QO-100 WB channel](https://wiki.batc.org.uk/QO-100_WB_Bandplan)
+to set its uplink frequency; Apply/Restart applies changes to an active transmitter.
+The Level slider uses relative dB: 0 dB is the default amplitude for the modulation.
+GUI defaults: 0 dB, W1 at 2403.750 MHz, DVB-S2 8PSK at 1 MS/s.
+Its minimum is set by `min_level_db` in `host/tx_gui_config.json` (default −27 dB).
+PA enable controls GPIO3: 3.3 V during TX, 0 V after Stop or USB timeout.
+It defaults to off; use Apply/Restart after changing the checkbox.
+Sampling and buffer settings are automatic; I/Q calibration comes from the selected
+JSON file. Defaults: 0 ppm, DC I/Q 0, Q gain 1, Q phase 0. The earlier board-specific
+example is in `host/cal_sp8esa.json`. Ready TS must fit the channel capacity.
+
 Run from the repository root with `.venv` activated. These examples loop the included
 Sintel trailer at 2370 MHz; FFmpeg adjusts the video and audio to the channel capacity.
 
@@ -66,6 +87,9 @@ python3 host/tx_dvbs.py --freq 2370 --baud 1000000 --dvbs2 --mod 16apsk --fec 2/
 
 # DVB-S2, 32APSK, 250 kS/s, FEC 3/4
 python3 host/tx_dvbs.py --freq 2370 --baud 250000 --dvbs2 --mod 32apsk --fec 3/4 --pilots --apsk-pl unit
+
+# Camera, DVB-S2 32APSK, 250 kS/s
+python3 host/tx_dvbs.py --freq 2370 --baud 250000 --dvbs2 --mod 32apsk --fec 3/4 --pilots --apsk-pl unit --camera /dev/video0 --camera-size 640x480 --camera-fps 30 --camera-format mjpeg
 ```
 
 Set the receiver to the same frequency, standard, modulation, symbol rate and FEC,
@@ -89,8 +113,13 @@ Useful options:
 | `--ppm N` | Compensate your board's crystal error |
 | `--cal file.json`, `--no-cal` | Use your own I/Q calibration or disable the included example calibration |
 | `--amp N` | DAC amplitude; defaults: 300 for QPSK, 400 for 32APSK, 420 for 8PSK/16APSK |
+| `--pa-enable` | Enable an external PA via GPIO3 while transmitting |
 
 All options: `python3 host/tx_dvbs.py --help`.
+
+Connect GPIO3 to the amplifier's 3.3 V compatible enable input and join grounds.
+Use a 10 kΩ pull-down to keep PA disabled during reset. GPIO3 is a logic output;
+the amplifier needs its own power supply.
 
 The firmware permits 2300–2450 MHz. For on-air use, choose a frequency allowed by your
 amateur licence and add an output filter: DAC images are visible in the plots below.

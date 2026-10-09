@@ -40,6 +40,11 @@ class Link:
         else:
             raise SystemExit("the ESP does not answer INFO (flash firmware/ first, or reset the board)")
         time.sleep(0.1)
+        info = next((line for line in got.decode(errors="replace").splitlines()
+                     if line.startswith("ESP32DATV ")), "")
+        fields = info.split()[2:]
+        capabilities = dict(zip(fields[::2], fields[1::2]))
+        self.pa_gpio = int(capabilities["PA_GPIO"]) if "PA_GPIO" in capabilities else None
         self.s.reset_input_buffer()
         self.buf = b""
         self.text = b""
@@ -47,6 +52,27 @@ class Link:
         self.under = 0             # ring underruns (saturates at 255)
         self.sent_since = 0        # pairs sent since the last report
         self.reports = 0
+
+    def configure_pa(self, enabled, timeout=3.0):
+        """Arm PA for the next TX; firmware keeps the output low while idle."""
+        if self.pa_gpio is None:
+            if enabled:
+                raise SystemExit("Firmware has no PA enable support; build and flash firmware/ first")
+            return
+        self.text = b""
+        self.s.write(f"PA {int(enabled)}\n".encode())
+        expected = f"OK PA {int(enabled)} GPIO {self.pa_gpio}"
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            self.poll()
+            for line in self.text.decode(errors="replace").splitlines():
+                if line == expected:
+                    self.text = b""
+                    return
+                if line.startswith("ERR"):
+                    raise SystemExit(f"ESP: {line}")
+            time.sleep(.01)
+        raise SystemExit("ESP did not acknowledge PA enable configuration")
 
     def poll(self):
         data = self.s.read(65536)
