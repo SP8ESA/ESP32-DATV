@@ -4,6 +4,15 @@ from pathlib import Path
 import re
 from urllib.parse import urlsplit
 
+DEFAULT_SERVICE_NAME = "ESP32-C3 DATV"
+DEFAULT_SERVICE_PROVIDER = "ESP32-DATV"
+
+
+def validate_service_metadata(service_name, service_provider):
+    for label, value in (("Service name", service_name), ("Service provider", service_provider)):
+        if not isinstance(value, str) or "\0" in value:
+            raise ValueError(f"{label} must be text without NUL characters")
+
 
 @dataclass(frozen=True)
 class VideoEncoding:
@@ -69,10 +78,13 @@ def validate_source(kind, value, camera_size="640x480", camera_fps=30, camera_fo
 
 def build_media_command(kind, value, cap, width=640, video_k=0, output_fps=0,
                         camera_size="640x480", camera_fps=30, camera_format="auto",
-                        audio_source="none", audio_device="default"):
+                        audio_source="none", audio_device="default",
+                        service_name=DEFAULT_SERVICE_NAME, service_provider=DEFAULT_SERVICE_PROVIDER):
+    validate_service_metadata(service_name, service_provider)
+    metadata = ["-metadata", f"service_provider={service_provider}", "-metadata", f"service_name={service_name}"]
     prefix = ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error"]
     if kind == "ts" and is_ts_url(value):
-        return prefix + ["-i", value, "-map", "0:v?", "-map", "0:a?", "-c", "copy", "-f", "mpegts", "-"]
+        return prefix + ["-i", value, "-map", "0:v?", "-map", "0:a?", "-c", "copy", "-f", "mpegts"] + metadata + ["-"]
     if kind not in ("film", "test", "camera"):
         return None
     v = encoding_settings(cap, width, video_k, output_fps)
@@ -100,6 +112,5 @@ def build_media_command(kind, value, cap, width=640, video_k=0, output_fps=0,
               "-x264-params", "nal-hrd=cbr:force-cfr=1", "-pix_fmt", "yuv420p",
               "-c:a", "mp2", "-b:a", f"{v.audio_k}k", "-ac", str(v.channels), "-ar", str(v.sample_rate),
               "-f", "mpegts", "-muxrate", str(v.mux), "-pcr_period", "40" if v.audio_k > 50 else "100",
-              "-pat_period", str(v.pat_period), "-mpegts_flags", "+resend_headers",
-              "-metadata", "service_provider=ESP32-DATV", "-metadata", "service_name=ESP32-C3 DATV", "-"]
-    return prefix + inputs + maps + encode
+              "-pat_period", str(v.pat_period), "-mpegts_flags", "+resend_headers"]
+    return prefix + inputs + maps + encode + metadata + ["-"]

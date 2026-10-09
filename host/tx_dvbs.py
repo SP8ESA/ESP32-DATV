@@ -44,7 +44,8 @@ sys.path.insert(0, HERE)
 import dvbs  # noqa: E402
 import dvbs2  # noqa: E402
 import esp_link  # noqa: E402
-from tx_media import build_media_command, encoding_settings, validate_source
+from tx_media import (build_media_command, encoding_settings, validate_source,
+                      DEFAULT_SERVICE_NAME, DEFAULT_SERVICE_PROVIDER, validate_service_metadata)
 
 CPU_HZ = 160_000_000
 P8_MIN_PERIOD = 75                 # floor interval, including fractional-deadline overhead in the C loop
@@ -59,7 +60,8 @@ class TsSource:
 
     def __init__(self, kind, arg, cap, width=640, video_k=0, output_fps=0,
                  camera_size="640x480", camera_fps=30, camera_format="auto",
-                 audio_source="none", audio_device="default"):
+                 audio_source="none", audio_device="default",
+                 service_name=DEFAULT_SERVICE_NAME, service_provider=DEFAULT_SERVICE_PROVIDER):
         self.q = queue.Queue(maxsize=400)
         self.kind, self.arg = kind, arg
         self.nulls = self.pkts = 0
@@ -72,7 +74,8 @@ class TsSource:
             return
         validate_source(kind, arg, camera_size, camera_fps, camera_format, audio_source)
         command = build_media_command(kind, arg, cap, width, video_k, output_fps,
-                                      camera_size, camera_fps, camera_format, audio_source, audio_device)
+                                      camera_size, camera_fps, camera_format, audio_source, audio_device,
+                                      service_name=service_name, service_provider=service_provider)
         if command:
             self.proc = subprocess.Popen(command, stdout=subprocess.PIPE, stdin=subprocess.DEVNULL, start_new_session=True)
             self.input = self.proc.stdout
@@ -287,6 +290,8 @@ def build_parser():
     ap.add_argument("--camera-format", choices=("auto", "mjpeg", "yuyv422", "nv12", "h264"), default="auto")
     ap.add_argument("--audio-source", choices=("none", "pulse", "alsa"), default="none", help="camera audio; none supplies silence")
     ap.add_argument("--audio-device", default="default", help="PulseAudio or ALSA capture device")
+    ap.add_argument("--service-name", default=DEFAULT_SERVICE_NAME, help="service name for generated/remuxed TS")
+    ap.add_argument("--service-provider", default=DEFAULT_SERVICE_PROVIDER, help="service provider for generated/remuxed TS")
     ap.add_argument("--dc-i", type=float, help="override I DC correction [DAC codes]")
     ap.add_argument("--dc-q", type=float, help="override Q DC correction [DAC codes]")
     ap.add_argument("--iq-gain", type=float, help="override Q gain (0.7..1.3)")
@@ -312,6 +317,7 @@ class Transmission:
 
 def resolve_transmission(a):
     """Resolve automatic settings and validate before opening USB or a source."""
+    validate_service_metadata(a.service_name, a.service_provider)
     if not all(math.isfinite(v) for v in (a.freq, a.ppm, a.seconds, a.fps, a.camera_fps)):
         raise ValueError("Frequency, correction and timing values must be finite")
     if not esp_link.BAND[0] <= a.freq <= esp_link.BAND[1]:
@@ -412,7 +418,8 @@ def main(argv=None):
     value = a.camera if kind == "camera" else a.ts if kind == "ts" else a.film or DEMO_FILM
     try:
         src = TsSource(kind, value, cap, a.width, a.video_k, a.fps,
-                       a.camera_size, a.camera_fps, a.camera_format, a.audio_source, a.audio_device)
+                       a.camera_size, a.camera_fps, a.camera_format, a.audio_source, a.audio_device,
+                       service_name=a.service_name, service_provider=a.service_provider)
     except ValueError as e:
         raise SystemExit(str(e))
     khz = round((a.freq * 1e6 - if_hz) / 1000 / (1 + a.ppm * 1e-6))

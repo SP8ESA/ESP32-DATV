@@ -11,7 +11,8 @@ from pathlib import Path
 import dvbs
 import dvbs2
 from tx_dvbs import DEMO_FILM, HERE, build_parser, resolve_transmission, source_kind
-from tx_media import encoding_settings, is_ts_url, validate_source
+from tx_media import (encoding_settings, is_ts_url, validate_source,
+                      DEFAULT_SERVICE_NAME, DEFAULT_SERVICE_PROVIDER, validate_service_metadata)
 from qo100_bandplan import CHANNELS
 
 REPO = Path(HERE).parent
@@ -82,12 +83,15 @@ class Settings:
     camera_format: str = "auto"
     audio_source: str = "none"
     audio_device: str = "default"
+    service_name: str = DEFAULT_SERVICE_NAME
+    service_provider: str = DEFAULT_SERVICE_PROVIDER
     width: int = 640
     video_k: int = 0
     fps: float = 0.
     cal: str = str(Path(HERE) / "cal.json")
 
     def argv(self):
+        validate_service_metadata(self.service_name, self.service_provider)
         if not isinstance(self.pa_enable, bool):
             raise ValueError("PA enable must be true or false")
         if self.standard not in ("DVB-S", "DVB-S2"):
@@ -108,6 +112,7 @@ class Settings:
         if self.port:
             args += ["--port", self.port]
         args += ["--cal", self.cal]
+        args += [f"--service-name={self.service_name}", f"--service-provider={self.service_provider}"]
         if self.source in ("film", "ts", "camera"):
             args += ["--" + self.source, getattr(self, self.source)]
         elif self.source == "ts_url":

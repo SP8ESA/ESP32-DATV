@@ -49,6 +49,10 @@ python3 -m pip install -r host/requirements.txt
 
 Replace `/dev/ttyACM0` with your board's port if necessary.
 
+Prebuilt firmware is available in [Releases](https://github.com/SP8ESA/ESP32-DATV/releases/latest).
+Download the firmware ZIP, unzip it and run `./flash.sh /dev/ttyACM0`
+(requires `python3 -m pip install esptool`). The bundle targets ESP32-C3 with 4 MB flash.
+
 ## Usage
 
 For the desktop GUI, install its dependencies and run:
@@ -58,7 +62,7 @@ python3 -m pip install -r host/requirements-gui.txt
 ./uruchom_nadajnik.sh
 ```
 
-<p align="center"><a href="docs/tx_gui.png"><img src="docs/tx_gui.png" alt="ESP32-DATV transmitter GUI with QO-100 channels, source selection and PA enable" width="1000"></a></p>
+<p align="center"><a href="docs/tx_gui.png"><img src="docs/tx_gui.png" alt="ESP32-DATV GUI with QO-100 channels, source selection, service metadata and PA enable" width="1000"></a></p>
 
 The single-panel GUI selects video, TS or a V4L2 camera and controls TX, Start/Stop
 and profiles. Click a [QO-100 WB channel](https://wiki.batc.org.uk/QO-100_WB_Bandplan)
@@ -71,6 +75,8 @@ It defaults to off; use Apply/Restart after changing the checkbox.
 Sampling and buffer settings are automatic; I/Q calibration comes from the selected
 JSON file. Defaults: 0 ppm, DC I/Q 0, Q gain 1, Q phase 0. The earlier board-specific
 example is in `host/cal_sp8esa.json`. Ready TS must fit the channel capacity.
+Service name and provider are editable for video, camera, test and TS URL sources;
+defaults are `ESP32-C3 DATV` and `ESP32-DATV`. TS files keep their own metadata.
 
 Run from the repository root with `.venv` activated. These examples loop the included
 Sintel trailer at 2370 MHz; FFmpeg adjusts the video and audio to the channel capacity.
@@ -114,6 +120,7 @@ Useful options:
 | `--cal file.json`, `--no-cal` | Use your own I/Q calibration or disable the included example calibration |
 | `--amp N` | DAC amplitude; defaults: 300 for QPSK, 400 for 32APSK, 420 for 8PSK/16APSK |
 | `--pa-enable` | Enable an external PA via GPIO3 while transmitting |
+| `--service-name NAME`, `--service-provider NAME` | Service metadata for generated or remuxed TS |
 
 All options: `python3 host/tx_dvbs.py --help`.
 
